@@ -1,0 +1,394 @@
+---
+stepsCompleted:
+  - step-01-validate-prerequisites
+  - step-02-design-epics
+  - step-03-create-stories
+inputDocuments:
+  - docs/prd.md
+  - docs/architecture.md
+  - docs/ui-ux-spec.md
+---
+
+# CleanTrack Pro - Epic Breakdown
+
+## Overview
+
+This document provides the complete epic and story breakdown for CleanTrack Pro, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
+
+## Requirements Inventory
+
+### Functional Requirements
+
+FR1: **IAM Structure**: System must support a single Realm with `tenant_id` and `site_ids[]` in JWT claims.
+FR2: **Role Management**: System must support roles: Superadmin, Admin_Tenant, Admin_Site, User_Site, Client.
+FR3: **Client Record**: System must maintain unique Client records per Tenant, usable across all network agencies.
+FR4: **Hybrid Identification**: System must allow client search via Phone (E.164), Name, Email, or Unique Code.
+FR5: **Unique Client Code**: System must generate a unique code for new clients, printable on cards or displayed as QR.
+FR6: **Order Lifecycle**: System must track orders through 9 states: CREATED, COLLECTED, IN_PROGRESS, READY, STORED, DELIVERED, CANCELLED, LOST, DELAYED.
+FR7: **Service Catalog**: System must support service types (Lavage Complet, Repassage Simple) per linen type.
+FR8: **Express Mode**: System must allow "Express" toggle on orders, prioritizing queue and applying specific pricing/deadline.
+FR9: **Multi-Item Orders**: System must support multiple items per order, each with its own service type.
+FR10: **Shelf Inventory**: System must allow Admin_Site to manage shelf slots (ID, Status).
+FR11: **Slot Assignment**: System must allow assigning orders to free slots during `STORED` state (support multi-slot).
+FR12: **Thermal Printing**: System must generate 80mm tickets with Giant QR Code and item stickers.
+
+### NonFunctional Requirements
+
+NFR1: **Security (RLS)**: PostgreSQL Row-Level Security (RLS) must be enforced for strict Tenant isolation.
+NFR2: **Performance**: Reception interface must support "Fast-Scan" workflows for rapid commercial operations.
+NFR3: **Usability (Dashboard)**: Dashboard must provide SaaS-level KPIs (Global CA, Expenses, Net Margin) with site filtering.
+NFR4: **UX/UI Consistency**: Visual identity must use "Blue Trust" (#1A5AD7) as primary, with specific semantic colors (Express=Orange/Red, Slot Free=Green, Slot Occupied=Grey).
+NFR5: **Printing Latency**: Printing must be handled via a local Node.js Print Proxy (ESC/POS) to minimize latency and dependency on cloud print reliability.
+
+### Additional Requirements
+
+- **Frontend Stack**: Next.js 14 (App Router) with Tailwind CSS.
+- **Mobile App**: React Native for the Client Portal.
+- **Backend Architecture**: NestJS with Modular Architecture.
+- **Authentication**: Keycloak Integration (OIDC) with specific claim mapping.
+- **Database**: PostgreSQL with Row-Level Security (RLS) enabled.
+- **Caching**: Redis for user sessions and Omnibox search optimization.
+- **Ticket Layout**: 80mm thermal ticket, Header (Logo+Info), Center (Giant QR), Footer (SLA).
+- **Reception UI**: "Fast-Scan" interface with single Omnibox and item selection by icons.
+- **Shelf Management UI**: Visual grid of slots with real-time fill indicators.
+
+### FR Coverage Map
+
+FR1: Epic 1 - IAM Structure & Claims
+FR2: Epic 1 - Role Management System
+FR3: Epic 2 - Tenant-scoped Client Records
+FR4: Epic 2 - Hybrid Search (Omnibox)
+FR5: Epic 2 - Unique Code Generation
+FR6: Epic 4 (Creation), Epic 5 (Processing), Epic 6 (Delivery) - Full Lifecycle
+FR7: Epic 3 - Service Catalog Definition
+FR8: Epic 3 - Express Mode Configuration
+FR9: Epic 4 - Multi-item Order Intake
+FR10: Epic 6 - Shelf/Slot Inventory
+FR11: Epic 6 - Slot Assignment
+FR12: Epic 4 - Thermal Ticket & Sticker Printing
+
+## Epic List
+
+### Epic 1: Foundation & Identity Access Management
+Establish the secure multi-tenant SaaS foundation where Superadmins can onboard Tenants, and Users can authenticate with appropriate roles.
+**FRs covered:** FR1, FR2, NFR1
+
+### Epic 2: Client Registry & Digital Identification
+Enable agencies to identify customers uniquely across the tenant network using hybrid search (Phone, Name) and assign permanent QR codes.
+**FRs covered:** FR3, FR4, FR5
+
+### Epic 3: Service Configuration & Pricing
+Empower Tenant Admins to define their service catalog (Laundry, Ironing) and pricing strategies (Express mode) to enforce business rules.
+**FRs covered:** FR7, FR8
+
+### Epic 4: Order Reception & Ticketing
+Streamline the intake process with a "Fast-Scan" interface that handles multi-item orders and instantly prints thermal receipts with tracking QRs.
+**FRs covered:** FR9, FR12, FR6 (Create), NFR2, NFR5
+
+### Epic 5: Operational Workflow Tracking
+Enable staff to track and update the status of laundry items through the production cycle (Washing, Drying, Finishing) to ensure SLA compliance.
+**FRs covered:** FR6 (Processed -> Ready), NFR3
+
+### Epic 6: Smart Storage & Delivery
+Organize finished orders into managed shelf slots and facilitate secure Handover/Delivery verification.
+**FRs covered:** FR10, FR11, FR6 (End)
+
+## Epic 1: Foundation & Identity Access Management
+
+Establish the secure multi-tenant SaaS foundation where Superadmins can onboard Tenants, and Users can authenticate with appropriate roles.
+
+### Story 1.0: Project Initialization & Scaffolding
+
+As a Developer,
+I want to initialize the project repository and development environment,
+So that the team has a stable foundation to build features upon.
+
+**Acceptance Criteria:**
+
+**Given** A fresh git repository
+**When** I initialize the Monorepo (or separate projects) for Backend (NestJS) and Frontend (Next.js)
+**Then** The basic "Hello World" applications start successfully
+**And** Docker Compose is configured to launch PostgreSQL and Keycloak containers locally
+
+### Story 1.1: Superadmin Tenant Onboarding
+
+As a Superadmin,
+I want to create a new Tenant (Agency) with a specific sub-domain/ID,
+So that I can onboard a new commercial client onto the SaaS platform.
+
+**Acceptance Criteria:**
+
+**Given** I am logged in as a Superadmin
+**When** I submit the "Create Tenant" form with Name and Subdomain
+**Then** A new Tenant entity is created with a unique UUID
+**And** A matching Realm/Config is initialized in Keycloak
+
+### Story 1.2: User Authentication & Role Mapping
+
+As a User,
+I want to log in using my credentials and have my specific Role (Superadmin, Admin_Tenant, Admin_Site, etc.) recognized,
+So that I can access the correct features.
+
+**Acceptance Criteria:**
+
+**Given** A registered user with assigned roles in Keycloak
+**When** They successfully log in via the Login Page
+**Then** The JWT token contains the custom `tenant_id` and role claims
+**And** The application prevents access to unauthorized routes based on these roles
+
+### Story 1.3: Admin_Tenant Agency Management
+
+As an Admin_Tenant,
+I want to configure my agency details and add Admin_Site users,
+So that I can delegate management of specific locations.
+
+**Acceptance Criteria:**
+
+**Given** I am logged in as an Admin_Tenant
+**When** I access the Agency Settings page
+**Then** I can update branding details (Logo, Name)
+**And** I can invite new users with the `Admin_Site` role
+
+### Story 1.4: RLS Security Enforcement
+
+As a Tenant Owner,
+I want strict data isolation enforced at the database level,
+So that my business data is never accessible to other tenants.
+
+**Acceptance Criteria:**
+
+**Given** A multi-tenant database setup
+**When** A query is executed by a specific Tenant's user
+**Then** The database only returns rows matching that user's `tenant_id`
+**And** Direct access to other tenants' data is blocked at the database level
+
+## Epic 2: Client Registry & Digital Identification
+
+Enable agencies to identify customers uniquely across the tenant network using hybrid search (Phone, Name) and assign permanent QR codes.
+
+### Story 2.1: Client Creation & Unique Code Generation
+
+As an User_Site,
+I want to register a new client and automatically generate a unique, printable code,
+So that they can be identified for future orders.
+
+**Acceptance Criteria:**
+
+**Given** I am on the Client Registration form
+**When** I enter a Name and valid Phone Number (E.164) and submit
+**Then** A new Client record is created for the Tenant
+**And** An 8-character alphanumeric Unique Code is automatically generated (ensuring no duplicates)
+
+### Story 2.2: Hybrid Client Search (Omnibox)
+
+As an User_Site,
+I want to find a client by typing their Name, Phone, or Unique Code in a single search box,
+So that I can quickly start an order.
+
+**Acceptance Criteria:**
+
+**Given** The Client Search Omnibox
+**When** I type a partial Name, Phone number, or exact Unique Code
+**Then** The system returns a list of matching clients
+**And** I can select the correct client to initiate an order
+**And** If no client is found, a "Create New Client" option is displayed
+
+### Story 2.3: Cross-Agency Client Recognition
+
+As an Admin_Tenant,
+I want client records to be accessible by all sites within my tenant,
+So that a customer can visit any branch.
+
+**Acceptance Criteria:**
+
+**Given** A client created at Site A
+**When** A user at Site B (same Tenant) searches for that client's details
+**Then** The client record is found and available
+**And** A user from a different Tenant CANNOT access this record (RLS check)
+
+## Epic 3: Service Configuration & Pricing
+
+Empower Tenant Admins to define their service catalog (Laundry, Ironing) and pricing strategies (Express mode) to enforce business rules.
+
+### Story 3.1: Article Type Management
+
+As an Admin_Tenant,
+I want to define types of articles (e.g., Shirt, Pants, Duvet),
+So that they are available for selection in orders.
+
+**Acceptance Criteria:**
+
+**Given** I am on the Service Configuration page
+**When** I add a new Article Type (Label, Category)
+**Then** It is saved to the database
+**And** I can edit or disable existing article types
+
+### Story 3.2: Service & Price List Configuration
+
+As an Admin_Tenant,
+I want to set prices for specific services (Wash, Iron, Dry Clean) for each Article Type,
+So that the system calculates order totals correctly.
+
+**Acceptance Criteria:**
+
+**Given** An existing Article Type
+**When** I assign a Service (e.g., "Full Wash") and set a Base Price
+**Then** This combination becomes available for selection in the order screen
+**And** Updating the price ONLY affects future orders (price versioning/snapshotting)
+
+### Story 3.3: Express Mode Configuration
+
+As an Admin_Tenant,
+I want to configure the surcharge and SLA reduction for "Express" orders,
+So that urgent orders are priced and tracked correctly.
+
+**Acceptance Criteria:**
+
+**Given** The Global Tenant Verification Settings
+**When** I set the Express Multiplier (e.g., 1.5) and SLA Target (e.g., 24h)
+**Then** The system saves these parameters
+**And** These values are used to calculate Price and Due Date for new Express orders
+
+## Epic 4: Order Reception & Ticketing
+
+Streamline the intake process with a "Fast-Scan" interface that handles multi-item orders and instantly prints thermal receipts with tracking QRs.
+
+### Story 4.1: Fast-Scan Order Interface
+
+As an User_Site,
+I want a streamlined POS interface to quickly add items to an order for a selected client,
+So that I can handle queues efficiently.
+
+**Acceptance Criteria:**
+
+**Given** A client is selected in the Omnibox
+**When** I tap an Article Icon (e.g., Shirt)
+**Then** It is legally added to the current Order Draft with the default service
+**And** I can adjust quantity or service type if needed
+
+### Story 4.2: Express Mode Toggling & Calculation
+
+As an User_Site,
+I want to toggle "Express" for the entire order,
+So that the Price and Due Date update instantly based on configuration.
+
+**Acceptance Criteria:**
+
+**Given** An active Order Draft
+**When** I toggle the "Express Mode" switch
+**Then** The Total Price increases by the configured logic
+**And** The Due Date is recalculated to the Express SLA target (e.g., Tomorrow same time)
+
+### Story 4.3: Order Validation & Persistence
+
+As an User_Site,
+I want to validate and save the order,
+So that it enters the workflow and financial records.
+
+**Acceptance Criteria:**
+
+**Given** A valid Order Draft with at least 1 item
+**When** I click "Validate & Pay" (or just Validate)
+**Then** The Order is saved to the database with status `CREATED`
+**And** A success confirmation is shown to the operator
+
+### Story 4.4: Thermal Ticket Printing
+
+As an User_Site,
+I want the system to automatically print a client receipt and item stickers upon validation,
+So that the physical items can be tracked.
+
+**Acceptance Criteria:**
+
+**Given** A successfully validated Order
+**When** The system completes persistence
+**Then** It sends a print job to the local Print Proxy
+**And** The proxy prints 1 Client Receipt (with Giant QR) and N Item Stickers (with Item QRs)
+
+## Epic 5: Operational Workflow Tracking
+
+Enable staff to track and update the status of laundry items through the production cycle (Washing, Drying, Finishing) to ensure SLA compliance.
+
+### Story 5.1: Order Workflow Management
+
+As an User_Site,
+I want to scan an item or order to update its status (e.g., from CREATED to IN_PROGRESS to READY),
+So that the customer knows the progress.
+
+**Acceptance Criteria:**
+
+**Given** An order or item QR code
+**When** I scan it using the workflow scanner
+**Then** I can select the new status (e.g., "Ready for Pickup")
+**And** The system validates the transition and updates the timestamp
+
+### Story 5.2: Dashboard KPI Visualization
+
+As an Admin_Site,
+I want to see real-time KPIs (Orders Received, Ready, Delivered) on my dashboard,
+So that I can monitor daily performance.
+
+**Acceptance Criteria:**
+
+**Given** The Admin Dashboard
+**When** I load the page
+**Then** I see counters for "Orders Today", "Revenue Today", and "Pending Orders"
+**And** I can filter these metrics by date range
+
+### Story 5.3: SLA Alerting (Delayed Orders)
+
+As an User_Site,
+I want to visually identify orders that are approaching or past their due date,
+So that we can prioritize them.
+
+**Acceptance Criteria:**
+
+**Given** The active orders list
+**When** An order is within 4 hours of its Due Date
+**Then** It is highlighted in Yellow
+**And** If the Due Date has passed, it is highlighted in Red
+
+## Epic 6: Smart Storage & Delivery
+
+Organize finished orders into managed shelf slots and facilitate secure Handover/Delivery verification.
+
+### Story 6.1: Shelf Slot Management
+
+As an Admin_Site,
+I want to create and manage physical storage slots (e.g., A-01, A-02),
+So that we have a digital map of our storage racks.
+
+**Acceptance Criteria:**
+
+**Given** I am on the Storage Configuration page
+**When** I create a new slot with ID "A-01"
+**Then** The slot is added to the database with status `FREE`
+**And** I can view a list of all slots and their status
+
+### Story 6.2: Order Storage Assignment
+
+As an User_Site,
+I want to scan a READY order and assign it to a specific Shelf Slot,
+So that we know exactly where to find it for retrieval.
+
+**Acceptance Criteria:**
+
+**Given** An Order in `READY` status and a physical slot
+**When** I scan the Order Ticket followed by the Slot Label
+**Then** The Order is linked to that Slot
+**And** The Order status updates to `STORED`
+**And** The Slot status updates to `OCCUPIED`
+
+### Story 6.3: Client Pickup & Delivery Verification
+
+As an User_Site,
+I want to scan a customer's ticket to locate their package and confirm delivery,
+So that the transaction is closed securely.
+
+**Acceptance Criteria:**
+
+**Given** A Customer presenting a ticket for pickup
+**When** I scan the QR code
+**Then** The system displays the Order details and its Shelf Slot ID
+**And** I can click "Confirm Delivery" to mark it as `DELIVERED`
+**And** The Shelf Slot status reverts to `FREE`
