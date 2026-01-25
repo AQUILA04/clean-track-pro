@@ -5,6 +5,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TenantModule } from './tenant/tenant.module';
 import { KeycloakModule } from './shared/keycloak/keycloak.module';
+import { UserModule } from './user/user.module';
+import { RlsModule } from './shared/database/rls/rls.module';
+import { ClientModule } from './clients/client.module';
 
 @Module({
   imports: [
@@ -21,6 +24,9 @@ import { KeycloakModule } from './shared/keycloak/keycloak.module';
     }),
     KeycloakModule,
     TenantModule,
+    UserModule,
+    RlsModule,
+    ClientModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -19,6 +19,13 @@ describe('TenantService', () => {
                 ...tenant
             })),
             find: jest.fn().mockResolvedValue([]),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+            findOneBy: jest.fn().mockImplementation(({ id }) => Promise.resolve({
+                id,
+                name: 'Updated Name',
+                logoUrl: 'http://example.com/logo.png',
+                subdomain: 'test'
+            })),
         };
 
         mockKeycloakService = {
@@ -61,5 +68,16 @@ describe('TenantService', () => {
         expect(mockRepository.save).toHaveBeenCalled();
         expect(mockKeycloakService.createRealm).toHaveBeenCalledWith(dto.subdomain);
         expect(mockKeycloakService.createClient).toHaveBeenCalledWith(dto.subdomain, dto.name);
+    });
+
+    it('should update tenant branding', async () => {
+        const id = 'tenant-id';
+        const dto = { name: 'Updated Name', logoUrl: 'http://example.com/logo.png' };
+
+        const result = await service.updateBranding(id, dto);
+
+        expect(mockRepository.update).toHaveBeenCalledWith(id, dto);
+        expect(mockRepository.findOneBy).toHaveBeenCalledWith({ id });
+        expect(result.name).toEqual(dto.name);
     });
 });

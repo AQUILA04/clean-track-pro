@@ -1,12 +1,18 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import KeycloakProvider from 'next-auth/providers/keycloak';
 
+const { KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_ISSUER } = process.env;
+
+if (!KEYCLOAK_CLIENT_ID || !KEYCLOAK_CLIENT_SECRET || !KEYCLOAK_ISSUER) {
+    throw new Error('Missing Keycloak environment variables');
+}
+
 export const authOptions: NextAuthOptions = {
     providers: [
         KeycloakProvider({
-            clientId: process.env.KEYCLOAK_CLIENT_ID!,
-            clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
-            issuer: process.env.KEYCLOAK_ISSUER,
+            clientId: KEYCLOAK_CLIENT_ID,
+            clientSecret: KEYCLOAK_CLIENT_SECRET,
+            issuer: KEYCLOAK_ISSUER,
         }),
     ],
     callbacks: {

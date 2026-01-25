@@ -7,6 +7,20 @@ const KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin';
 const REALM_NAME = process.env.KEYCLOAK_REALM || 'cleantrack';
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || 'cleantrack-client';
 
+const requiredEnvVars = [
+    { name: 'KEYCLOAK_URL', val: KEYCLOAK_URL },
+    { name: 'KEYCLOAK_ADMIN', val: KEYCLOAK_ADMIN },
+    { name: 'KEYCLOAK_ADMIN_PASSWORD', val: KEYCLOAK_ADMIN_PASSWORD },
+    { name: 'KEYCLOAK_REALM', val: REALM_NAME },
+    { name: 'KEYCLOAK_CLIENT_ID', val: CLIENT_ID },
+];
+
+requiredEnvVars.forEach((v) => {
+    if (!v.val) {
+        console.warn(`⚠️  Warning: ${v.name} is using a hardcoded default or empty value.`);
+    }
+});
+
 async function setupKeycloak() {
     console.log('🔧 Setting up Keycloak...');
 

@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantBrandingDto } from './dto/update-tenant-branding.dto';
 import { Tenant } from './entities/tenant.entity';
 import { KeycloakService } from '../shared/keycloak/keycloak.service';
 
@@ -36,5 +37,17 @@ export class TenantService {
 
     async findAll(): Promise<Tenant[]> {
         return this.tenantRepository.find();
+    }
+
+    async updateBranding(id: string, updateTenantBrandingDto: UpdateTenantBrandingDto): Promise<Tenant> {
+        this.logger.log(`Updating branding for tenant ${id}: ${JSON.stringify(updateTenantBrandingDto)}`);
+
+        await this.tenantRepository.update(id, updateTenantBrandingDto);
+        const updatedTenant = await this.tenantRepository.findOneBy({ id });
+
+        if (!updatedTenant) {
+            throw new NotFoundException(`Tenant with ID ${id} not found`);
+        }
+        return updatedTenant;
     }
 }

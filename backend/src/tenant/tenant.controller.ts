@@ -3,6 +3,9 @@ import { AuthGuard, RoleGuard, Roles, Public } from 'nest-keycloak-connect';
 import { CurrentUser, type AuthUser } from '../auth/decorators/current-user.decorator';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantBrandingDto } from './dto/update-tenant-branding.dto';
+import { Response } from '../shared/response/response.builder';
+import { HttpStatus, Patch } from '@nestjs/common';
 
 @Controller('tenants')
 @UseGuards(AuthGuard, RoleGuard)
@@ -20,6 +23,23 @@ export class TenantController {
         @CurrentUser() user: AuthUser,
     ) {
         return this.tenantService.create(createTenantDto);
+    }
+
+    @Patch('me')
+    @Roles({ roles: ['Admin_Tenant'] })
+    async updateBranding(
+        @Body() updateTenantBrandingDto: UpdateTenantBrandingDto,
+        @CurrentUser() user: AuthUser,
+    ) {
+        if (!user.tenant_id) {
+            throw new Error('Tenant ID missing for Admin_Tenant');
+        }
+        const updatedTenant = await this.tenantService.updateBranding(user.tenant_id, updateTenantBrandingDto);
+        return Response.builder()
+            .status(HttpStatus.OK)
+            .message('tenant.branding.updated')
+            .data(updatedTenant)
+            .build();
     }
 
     /**
