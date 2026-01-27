@@ -59,7 +59,7 @@ development_status:
   # Epic 3: Service Configuration & Pricing
   epic-3: in-progress
   3-1-article-type-management: done
-  3-2-service-price-list-configuration: backlog
+  3-2-service-price-list-configuration: done
   3-3-express-mode-configuration: backlog
   epic-3-retrospective: optional
 
