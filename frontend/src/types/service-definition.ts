@@ -14,4 +14,4 @@ export interface CreateServiceDefinitionDto {
     is_active?: boolean;
 }
 
-export interface UpdateServiceDefinitionDto extends Partial<CreateServiceDefinitionDto> { }
+export type UpdateServiceDefinitionDto = Partial<CreateServiceDefinitionDto>;

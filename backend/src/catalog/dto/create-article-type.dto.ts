@@ -14,4 +14,9 @@ export class CreateArticleTypeDto {
     @IsBoolean()
     @IsOptional()
     is_active?: boolean;
+
+    @IsString()
+    @IsOptional()
+    @MaxLength(100)
+    icon?: string;
 }

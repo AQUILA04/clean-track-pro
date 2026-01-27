@@ -15,4 +15,7 @@ export class ArticleType extends BaseEntity {
 
     @Column({ type: 'boolean', default: true })
     is_active: boolean;
+
+    @Column({ type: 'varchar', length: 100, nullable: true })
+    icon: string;
 }

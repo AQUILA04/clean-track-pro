@@ -6,12 +6,14 @@ export interface ArticleType {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    icon?: string;
 }
 
 export interface CreateArticleTypeDto {
     label: string;
     category: string;
     is_active?: boolean;
+    icon?: string;
 }
 
-export interface UpdateArticleTypeDto extends Partial<CreateArticleTypeDto> { }
+export type UpdateArticleTypeDto = Partial<CreateArticleTypeDto>;
