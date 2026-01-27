@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Query, BadRequestException } from '@nestjs/common';
 import { ClientService } from './client.service';
 import { CreateClientDto } from './dto/create-client.dto';
 // Assuming AuthGuard and standard Guards are available in shared
@@ -15,5 +15,13 @@ export class ClientController {
     create(@Body() createClientDto: CreateClientDto) {
         // RLS context is handled by middleware/global guard setting CLS context
         return this.clientService.create(createClientDto);
+    }
+
+    @Get('search')
+    search(@Query('q') query: string) {
+        if (!query || query.length < 3) {
+            throw new BadRequestException('Query must be at least 3 characters');
+        }
+        return this.clientService.search(query);
     }
 }

@@ -42,4 +42,18 @@ export const ClientService = {
 
         return response.json();
     },
+    search: async (query: string) => {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/clients/search?q=${encodeURIComponent(query)}`, {
+            headers: {
+                'Authorization': token ? `Bearer ${token}` : '',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to search clients');
+        }
+
+        return response.json();
+    },
 };

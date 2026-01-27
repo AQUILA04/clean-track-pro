@@ -9,6 +9,8 @@ export class Client {
     @Column({ type: 'uuid' })
     tenant_id: string;
 
+    // GIN indexes with pg_trgm extension are managed via migration (EnablePgTrgmAndGinIndexes1769350800000)
+    // These support efficient ILIKE '%substring%' queries for the search endpoint
     @Column()
     first_name: string;
 

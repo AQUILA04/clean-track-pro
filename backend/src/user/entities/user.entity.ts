@@ -9,7 +9,7 @@ export class User {
     @Column({ unique: true })
     email: string;
 
-    @Column({ name: 'tenant_id', nullable: true })
+    @Column({ name: 'tenant_id', nullable: true, type: 'uuid' })
     tenantId: string | null;
 
     @Column({ nullable: true })
