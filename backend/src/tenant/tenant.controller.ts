@@ -4,6 +4,7 @@ import { CurrentUser, type AuthUser } from '../auth/decorators/current-user.deco
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantBrandingDto } from './dto/update-tenant-branding.dto';
+import { UpdateTenantConfigDto } from './dto/update-tenant-config.dto';
 import { Response } from '../shared/response/response.builder';
 import { HttpStatus, Patch } from '@nestjs/common';
 
@@ -37,7 +38,23 @@ export class TenantController {
         const updatedTenant = await this.tenantService.updateBranding(user.tenant_id, updateTenantBrandingDto);
         return Response.builder()
             .status(HttpStatus.OK)
-            .message('tenant.branding.updated')
+            .data(updatedTenant)
+            .build();
+    }
+
+    @Patch('me/config')
+    @Roles({ roles: ['Admin_Tenant'] })
+    async updateConfig(
+        @Body() updateTenantConfigDto: UpdateTenantConfigDto,
+        @CurrentUser() user: AuthUser,
+    ) {
+        if (!user.tenant_id) {
+            throw new Error('Tenant ID missing for Admin_Tenant');
+        }
+        const updatedTenant = await this.tenantService.updateConfig(user.tenant_id, updateTenantConfigDto);
+        return Response.builder()
+            .status(HttpStatus.OK)
+            .message('tenant.config.updated')
             .data(updatedTenant)
             .build();
     }

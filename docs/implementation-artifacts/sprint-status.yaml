@@ -60,7 +60,7 @@ development_status:
   epic-3: in-progress
   3-1-article-type-management: done
   3-2-service-price-list-configuration: done
-  3-3-express-mode-configuration: backlog
+  3-3-express-mode-configuration: done
   epic-3-retrospective: optional
 
   # Epic 4: Order Reception & Ticketing

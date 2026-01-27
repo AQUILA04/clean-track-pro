@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe, ExecutionContext } from '@nestjs/common';
 import request from 'supertest';
 import { TenantController } from './tenant.controller';
 import { TenantService } from './tenant.service';
@@ -13,6 +13,7 @@ describe('TenantController (e2e) - RBAC Tests', () => {
         create: jest.fn().mockResolvedValue({ id: 'tenant-1', name: 'Test Tenant' }),
         findAll: jest.fn().mockResolvedValue([]),
         updateBranding: jest.fn(),
+        updateConfig: jest.fn().mockResolvedValue({ id: 'tenant-1', express_multiplier: 2.0 }),
     };
 
     // Mocks for Guards to control access in tests
@@ -20,7 +21,19 @@ describe('TenantController (e2e) - RBAC Tests', () => {
     const mockRoleGuard = { canActivate: jest.fn(() => true) };
 
     const createTestApp = async (authResult = true, roleResult = true) => {
-        mockAuthGuard.canActivate.mockReturnValue(authResult);
+        mockAuthGuard.canActivate.mockImplementation((context: ExecutionContext) => {
+            if (authResult) {
+                const req = context.switchToHttp().getRequest();
+                req.user = {
+                    sub: 'user-123',
+                    email: 'test@example.com',
+                    realm_access: { roles: ['Admin_Tenant', 'Superadmin'] },
+                    tenant_id: 'tenant-1',
+                    site_ids: []
+                };
+            }
+            return authResult;
+        });
         mockRoleGuard.canActivate.mockReturnValue(roleResult);
 
         const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -84,6 +97,22 @@ describe('TenantController (e2e) - RBAC Tests', () => {
 
 
     });
+
+    describe('Config Update', () => {
+        it('should allow Admin_Tenant to update config', async () => {
+            // Auth OK, Role OK (Admin_Tenant)
+            app = await createTestApp(true, true);
+
+            const response = await request(app.getHttpServer())
+                .patch('/tenants/me/config')
+                .send({ express_multiplier: 2.0, express_sla_hours: 12 });
+
+            expect(response.status).toBe(200);
+            expect(response.body.data.express_multiplier).toBe(2.0);
+            await app.close();
+        });
+    });
+
 
     describe('AC4: Role-Based Access Control', () => {
         it('should allow public/health endpoint without authentication', async () => {

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantBrandingDto } from './dto/update-tenant-branding.dto';
+import { UpdateTenantConfigDto } from './dto/update-tenant-config.dto';
 import { Tenant } from './entities/tenant.entity';
 import { KeycloakService } from '../shared/keycloak/keycloak.service';
 
@@ -43,6 +44,18 @@ export class TenantService {
         this.logger.log(`Updating branding for tenant ${id}: ${JSON.stringify(updateTenantBrandingDto)}`);
 
         await this.tenantRepository.update(id, updateTenantBrandingDto);
+        const updatedTenant = await this.tenantRepository.findOneBy({ id });
+
+        if (!updatedTenant) {
+            throw new NotFoundException(`Tenant with ID ${id} not found`);
+        }
+        return updatedTenant;
+    }
+
+    async updateConfig(id: string, updateTenantConfigDto: UpdateTenantConfigDto): Promise<Tenant> {
+        this.logger.log(`Updating config for tenant ${id}: ${JSON.stringify(updateTenantConfigDto)}`);
+
+        await this.tenantRepository.update(id, updateTenantConfigDto);
         const updatedTenant = await this.tenantRepository.findOneBy({ id });
 
         if (!updatedTenant) {

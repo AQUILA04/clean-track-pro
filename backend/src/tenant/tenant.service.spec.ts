@@ -80,4 +80,14 @@ describe('TenantService', () => {
         expect(mockRepository.findOneBy).toHaveBeenCalledWith({ id });
         expect(result.name).toEqual(dto.name);
     });
+
+    it('should update tenant config', async () => {
+        const id = 'tenant-id';
+        const dto = { express_multiplier: 2.0, express_sla_hours: 12 };
+
+        const result = await service.updateConfig(id, dto);
+
+        expect(mockRepository.update).toHaveBeenCalledWith(id, dto);
+        expect(mockRepository.findOneBy).toHaveBeenCalledWith({ id });
+    });
 });

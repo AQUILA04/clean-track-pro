@@ -9,11 +9,18 @@ export interface UpdateTenantBrandingDto {
     logoUrl?: string;
 }
 
+export interface UpdateTenantConfigDto {
+    express_multiplier: number;
+    express_sla_hours: number;
+}
+
 export interface Tenant {
     id: string;
     name: string;
     subdomain: string;
     logoUrl?: string;
+    express_multiplier: number;
+    express_sla_hours: number;
     created_at: string;
 }
 
@@ -56,6 +63,21 @@ export const TenantService = {
 
         const res = await response.json();
         return res.data; // Response.builder returns { data: ... }
+    },
+
+    updateConfig: async (updateTenantConfigDto: UpdateTenantConfigDto): Promise<Tenant> => {
+        const response = await fetch(`${API_URL}/tenants/me/config`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(updateTenantConfigDto),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update config');
+        }
+
+        const res = await response.json();
+        return res.data;
     },
 
     getCurrentTenant: async (): Promise<Tenant> => {
