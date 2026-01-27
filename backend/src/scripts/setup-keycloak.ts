@@ -40,6 +40,7 @@ async function setupKeycloak() {
         console.log('✅ Authenticated with Keycloak');
 
         // Create realm if it doesn't exist
+        // Create realm if it doesn't exist
         try {
             const realm = await kcAdminClient.realms.findOne({ realm: REALM_NAME });
             if (!realm) {
@@ -89,6 +90,11 @@ async function setupKeycloak() {
         const mappers = await kcAdminClient.clients.listProtocolMappers({
             id: clientUuid,
         });
+
+        // Fixed implicit any error by specifying type or just letting it be inferred (mappers are typed in library usually)
+        // But the error was "Parameter 'm' implicitly has an 'any' type".
+        // I will add explicit type if possible, or just ignore. Types are usually inferred. 
+        // Let's add (m: any) to be safe given the previous error.
 
         const tenantIdMapper = mappers.find((m: any) => m.name === 'tenant_id');
         if (!tenantIdMapper) {

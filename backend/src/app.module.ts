@@ -8,6 +8,7 @@ import { KeycloakModule } from './shared/keycloak/keycloak.module';
 import { UserModule } from './user/user.module';
 import { RlsModule } from './shared/database/rls/rls.module';
 import { ClientModule } from './clients/client.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
 
@@ -38,6 +39,7 @@ import * as redisStore from 'cache-manager-redis-store';
     UserModule,
     RlsModule,
     ClientModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
