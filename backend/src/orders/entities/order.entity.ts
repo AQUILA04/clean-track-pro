@@ -1,13 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { OrderItem } from './order-item.entity';
 
-export enum OrderStatus {
-    CREATED = 'CREATED',
-    IN_PROGRESS = 'IN_PROGRESS',
-    READY = 'READY',
-    DELIVERED = 'DELIVERED',
-    CANCELLED = 'CANCELLED'
-}
+import { OrderStatus } from '../enums/order-status.enum';
 
 export enum ServiceLevel {
     NORMAL = 'NORMAL',

@@ -20,5 +20,23 @@ export const OrdersService = {
             withCredentials: true,
         });
         return response.data;
+    },
+
+    async getById(id: string) {
+        const headers = await getAuthHeaders();
+        const response = await axios.get(`${API_URL}/orders/${id}`, {
+            headers,
+            withCredentials: true,
+        });
+        return response.data;
+    },
+
+    async updateStatus(id: string, status: string) {
+        const headers = await getAuthHeaders();
+        const response = await axios.patch(`${API_URL}/orders/${id}/status`, { status }, {
+            headers,
+            withCredentials: true,
+        });
+        return response.data;
     }
 };

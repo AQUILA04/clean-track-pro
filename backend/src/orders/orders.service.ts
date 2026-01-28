@@ -1,7 +1,8 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { Order, ServiceLevel, OrderStatus } from './entities/order.entity';
+import { Order, ServiceLevel } from './entities/order.entity';
+import { OrderStatus } from './enums/order-status.enum';
 import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { TenantService } from '../tenant/tenant.service';
@@ -97,5 +98,38 @@ export class OrdersService {
             // Return full order
             return savedOrder;
         });
+    }
+
+    async updateStatus(id: string, newStatus: OrderStatus, tenantId: string): Promise<Order> {
+        this.logger.log(`Updating status for order ${id} to ${newStatus} (Tenant: ${tenantId})`);
+
+        const order = await this.ordersRepository.findOne({
+            where: { id, tenant_id: tenantId }
+        });
+
+        if (!order) {
+            throw new BadRequestException('Order not found or access denied.');
+        }
+
+        this.validateStatusTransition(order.status, newStatus);
+
+        order.status = newStatus;
+        return await this.ordersRepository.save(order);
+    }
+
+    private validateStatusTransition(current: OrderStatus, next: OrderStatus): void {
+        const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
+            [OrderStatus.CREATED]: [OrderStatus.IN_PROGRESS, OrderStatus.CANCELLED],
+            [OrderStatus.IN_PROGRESS]: [OrderStatus.READY, OrderStatus.CANCELLED],
+            [OrderStatus.READY]: [OrderStatus.STORED, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+            [OrderStatus.STORED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+            [OrderStatus.DELIVERED]: [],
+            [OrderStatus.CANCELLED]: []
+        };
+
+        const allowed = allowedTransitions[current] || [];
+        if (!allowed.includes(next)) {
+            throw new BadRequestException(`Invalid status transition from ${current} to ${next}`);
+        }
     }
 }

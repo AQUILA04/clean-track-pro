@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Order, ServiceLevel, OrderStatus } from './entities/order.entity';
+import { Order, ServiceLevel } from './entities/order.entity';
+import { OrderStatus } from './enums/order-status.enum';
 import { TenantService } from '../tenant/tenant.service';
 import { PricingService } from '../catalog/services/pricing.service';
 import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
@@ -133,5 +135,37 @@ describe('OrdersService', () => {
         };
 
         await expect(service.create(dto, 'tenant-1')).rejects.toThrow('Order must have items');
+    });
+    describe('updateStatus', () => {
+        it('should update status for valid transition', async () => {
+            mockOrderRepository.findOne = jest.fn().mockResolvedValue({
+                id: 'order-1',
+                tenant_id: 'tenant-1',
+                status: OrderStatus.CREATED
+            });
+            mockOrderRepository.save = jest.fn().mockImplementation(o => Promise.resolve(o));
+
+            const result = await service.updateStatus('order-1', OrderStatus.IN_PROGRESS, 'tenant-1');
+            expect(result.status).toBe(OrderStatus.IN_PROGRESS);
+            expect(mockOrderRepository.save).toHaveBeenCalled();
+        });
+
+        it('should throw BadRequestException for invalid transition', async () => {
+            mockOrderRepository.findOne = jest.fn().mockResolvedValue({
+                id: 'order-1',
+                tenant_id: 'tenant-1',
+                status: OrderStatus.CREATED
+            });
+
+            await expect(service.updateStatus('order-1', OrderStatus.DELIVERED, 'tenant-1'))
+                .rejects.toThrow(BadRequestException);
+        });
+
+        it('should throw BadRequestException if order not found', async () => {
+            mockOrderRepository.findOne = jest.fn().mockResolvedValue(null);
+
+            await expect(service.updateStatus('order-1', OrderStatus.IN_PROGRESS, 'tenant-1'))
+                .rejects.toThrow(BadRequestException);
+        });
     });
 });
