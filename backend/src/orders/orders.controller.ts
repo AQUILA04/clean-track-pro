@@ -41,4 +41,23 @@ export class OrdersController {
         }
         return this.ordersService.getDashboardStats(user.tenant_id, timezone);
     }
+
+    @Get()
+    @Roles({ roles: ['realm:User_Site', 'realm:Admin_Site', 'realm:Admin_Tenant'] })
+    findAll(
+        @CurrentUser() user: AuthUser,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '50',
+        @Query('type') type: 'active' | 'all' = 'active'
+    ) {
+        if (!user.tenant_id) {
+            throw new BadRequestException('Tenant ID required to fetch orders');
+        }
+        return this.ordersService.findAll(
+            user.tenant_id,
+            parseInt(page),
+            parseInt(limit),
+            type
+        );
+    }
 }

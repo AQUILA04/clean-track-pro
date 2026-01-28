@@ -179,4 +179,60 @@ export class OrdersService {
             pendingOrders
         };
     }
+
+    async findAll(
+        tenantId: string,
+        page: number = 1,
+        limit: number = 50,
+        type: 'active' | 'all' = 'active'
+    ): Promise<{ data: any[], meta: any }> {
+        const skip = (page - 1) * limit;
+
+        const query = this.ordersRepository.createQueryBuilder('order')
+            .leftJoinAndSelect('order.items', 'items')
+            .leftJoinAndMapOne('order.client', 'clients', 'client', 'client.id = order.client_id')
+            .where('order.tenant_id = :tenantId', { tenantId });
+
+        if (type === 'active') {
+            // Filter for active orders: CREATED, IN_PROGRESS, READY
+            query.andWhere('order.status IN (:...statuses)', {
+                statuses: [OrderStatus.CREATED, OrderStatus.IN_PROGRESS, OrderStatus.READY]
+            });
+        }
+
+        // Sort by due_date ASC (most urgent first)
+        query.orderBy('order.due_date', 'ASC');
+
+        const [orders, total] = await query
+            .skip(skip)
+            .take(limit)
+            .getManyAndCount();
+
+        // Map to DTO
+        const data = orders.map(order => {
+            // @ts-ignore
+            const clientName = order.client ? `${order.client.first_name || ''} ${order.client.last_name || ''}`.trim() : 'Unknown';
+
+            return {
+                id: order.id,
+                client_name: clientName,
+                items_summary: `${order.items?.length || 0} items`,
+                due_date: order.due_date,
+                status: order.status,
+                total_price: Number(order.total_price),
+                service_level: order.service_level,
+                created_at: order.created_at
+            };
+        });
+
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
+    }
 }

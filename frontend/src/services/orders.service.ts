@@ -47,5 +47,15 @@ export const OrdersService = {
             withCredentials: true,
         });
         return response.data;
+    },
+
+    async findAll(page: number = 1, limit: number = 50, type: 'active' | 'all' = 'active') {
+        const headers = await getAuthHeaders();
+        const response = await axios.get(`${API_URL}/orders`, {
+            params: { page, limit, type },
+            headers,
+            withCredentials: true,
+        });
+        return response.data;
     }
 };
