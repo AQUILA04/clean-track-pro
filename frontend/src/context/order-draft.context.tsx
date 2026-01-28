@@ -7,6 +7,8 @@ import { TenantService } from '../services/tenant.service';
 import { OrdersService } from '../services/orders.service';
 import { ServiceLevel } from '../types/create-order.dto';
 import { useToast } from '../components/ui/simple-toast';
+import { PrintingService } from '../services/printing.service';
+import { PrintableOrder } from '../types/printing.types';
 
 export interface OrderItemDraft {
     articleId: string;
@@ -240,14 +242,74 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
                     quantity: item.quantity,
                     price: item.price
                 }))
-            });
+            }).then(async (response) => {
+                const orderData = response.data; // Wrapper API response data field
 
-            toast({
-                title: 'Order Created',
-                description: 'Order created successfully!',
-                variant: 'success',
+                toast({
+                    title: 'Order Created',
+                    description: 'Order created successfully!',
+                    variant: 'success',
+                });
+
+                // Construct Print Payload
+                const printPayload: PrintableOrder = {
+                    header: {
+                        tenantName: (user as any)?.tenant_name || 'CleanTrack',
+                        siteName: (user as any)?.site_name || 'Main Site',
+                        date: new Date().toISOString()
+                    },
+                    client: {
+                        name: state.clientName || 'Unknown Client',
+                        phone: '', // Placeholder, would need client details lookup
+                        qrCodeValue: orderData.id // Order UUID from backend
+                    },
+                    items: state.items.map((item) => {
+                        // Robustly find the created item ID by matching article and service definition
+                        const createdItem = orderData.items?.find((i: any) =>
+                            i.article_type_id === item.articleId &&
+                            i.service_definition_id === item.serviceId
+                        );
+
+                        return {
+                            label: item.articleName,
+                            service: item.serviceName,
+                            price: item.price,
+                            qrCodeValue: createdItem?.id || 'unknown-id'
+                        };
+                    }),
+                    totals: {
+                        totalPrice: totalPrice,
+                        currency: 'XOF', // Hardcoded to XOF (FCFA) for MVP - TODO: Move to Tenant config in future
+                        dueDate: estimatedDueDate?.toISOString() || ''
+                    }
+                };
+
+                const executePrint = async (payload: PrintableOrder) => {
+                    try {
+                        await PrintingService.printOrder(payload);
+                        toast({ title: 'Printing', description: 'Ticket sent to printer.', variant: 'success' });
+                    } catch (e) {
+                        toast({
+                            title: 'Printer Error',
+                            description: 'Check Local Proxy',
+                            variant: 'destructive',
+                            action: (
+                                <button
+                                    className="bg-white text-red-600 px-2 py-1 rounded font-bold text-sm hover:bg-gray-100"
+                                    onClick={() => executePrint(payload)}
+                                >
+                                    RETRY
+                                </button>
+                            )
+                        });
+                    }
+                };
+
+                // Trigger Print
+                executePrint(printPayload);
+
+                clearDraft();
             });
-            clearDraft();
 
         } catch (error: any) {
             console.error('Failed to validate order', error);

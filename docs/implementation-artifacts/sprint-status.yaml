@@ -68,7 +68,7 @@ development_status:
   4-1-fast-scan-order-interface: done
   4-2-express-mode-toggling-calculation: done
   4-3-order-validation-persistence: done
-  4-4-thermal-ticket-printing: backlog
+  4-4-thermal-ticket-printing: done
   epic-4-retrospective: optional
 
   # Epic 5: Operational Workflow Tracking
