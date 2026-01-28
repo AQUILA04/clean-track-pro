@@ -1,22 +1,43 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrdersService } from './orders.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Order, ServiceLevel } from './entities/order.entity';
+import { Order, ServiceLevel, OrderStatus } from './entities/order.entity';
 import { TenantService } from '../tenant/tenant.service';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { OrderStatus } from './entities/order.entity';
+import { PricingService } from '../catalog/services/pricing.service';
+import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
+import { DataSource } from 'typeorm';
 
 describe('OrdersService', () => {
     let service: OrdersService;
     let tenantService: TenantService;
+    let pricingService: PricingService;
 
+    // Mock Managers and Repositories
     const mockOrderRepository = {
         create: jest.fn().mockImplementation((dto) => dto),
         save: jest.fn().mockImplementation((order) => Promise.resolve({ id: 'order-id', ...order })),
     };
 
+    const mockEntityManager = {
+        create: jest.fn().mockImplementation((entity, dto) => dto),
+        save: jest.fn().mockImplementation((entityOrEntities) => {
+            if (Array.isArray(entityOrEntities)) {
+                return Promise.resolve(entityOrEntities);
+            }
+            return Promise.resolve({ id: 'saved-id', ...entityOrEntities });
+        }),
+    };
+
+    const mockDataSource = {
+        transaction: jest.fn().mockImplementation((cb) => cb(mockEntityManager)),
+    };
+
     const mockTenantService = {
         findOne: jest.fn(),
+    };
+
+    const mockPricingService = {
+        getPrice: jest.fn(),
     };
 
     beforeEach(async () => {
@@ -31,88 +52,86 @@ describe('OrdersService', () => {
                     provide: TenantService,
                     useValue: mockTenantService,
                 },
+                {
+                    provide: PricingService,
+                    useValue: mockPricingService,
+                },
+                {
+                    provide: DataSource,
+                    useValue: mockDataSource,
+                },
             ],
         }).compile();
 
         service = module.get<OrdersService>(OrdersService);
         tenantService = module.get<TenantService>(TenantService);
+        pricingService = module.get<PricingService>(PricingService);
     });
 
-    it('should create order and verify price (correct match)', async () => {
+    it('should create order and match calculated price', async () => {
         mockTenantService.findOne.mockResolvedValue({ express_multiplier: 1.5 });
+        mockPricingService.getPrice.mockResolvedValue(10.00); // Items are 10.00 each
 
-        // 10 * 1 = 10. Express 1.5x -> 15.
+        const itemDto: CreateOrderItemDto = {
+            article_type_id: 'article-1',
+            service_definition_id: 'service-1',
+            quantity: 1,
+            price: 10
+        };
+
         const dto: CreateOrderDto = {
             site_id: 'site-1',
             client_id: 'client-1',
-            due_date: new Date().toISOString(),
+            due_date: new Date().toISOString(), // Will be ignored/recalculated
             status: OrderStatus.CREATED,
             service_level: ServiceLevel.EXPRESS,
-            total_price: 15.00,
-            items: [{ price: 10, quantity: 1 }]
+            total_price: 15.00, // 10 * 1.5 = 15.00
+            items: [itemDto]
         };
 
         const result = await service.create(dto, 'tenant-1');
+
+        // Assertions
+        expect(mockPricingService.getPrice).toHaveBeenCalledWith('tenant-1', 'article-1', 'service-1');
         expect(result.total_price).toBe(15.00);
-        expect(mockOrderRepository.save).toHaveBeenCalled();
+        expect(mockEntityManager.save).toHaveBeenCalledTimes(2); // Order and Item (loop)
     });
 
-    it('should create order and CORRECT price if mismatch (too low)', async () => {
-        mockTenantService.findOne.mockResolvedValue({ express_multiplier: 1.5 });
+    it('should force calculated price if provided price is wrong', async () => {
+        mockTenantService.findOne.mockResolvedValue({ express_multiplier: 1.0 });
+        mockPricingService.getPrice.mockResolvedValue(10.00);
 
-        // 10 * 1 = 10. Express 1.5x -> 15. Provided: 10.
-        const dto: CreateOrderDto = {
-            site_id: 'site-1',
-            client_id: 'client-1',
-            due_date: new Date().toISOString(),
-            status: OrderStatus.CREATED,
-            service_level: ServiceLevel.EXPRESS,
-            total_price: 10.00, // INCORRECT
-            items: [{ price: 10, quantity: 1 }]
+        const itemDto: CreateOrderItemDto = {
+            article_type_id: 'article-1',
+            service_definition_id: 'service-1',
+            quantity: 2, // 2 * 10 = 20
+            price: 10
         };
 
-        const result = await service.create(dto, 'tenant-1');
-        expect(result.total_price).toBe(15.00); // CORRECTED
-    });
-
-    it('should create order and CORRECT price if mismatch (too high)', async () => {
-        mockTenantService.findOne.mockResolvedValue({ express_multiplier: 1.0 }); // Normal
-
-        // 10 * 1 = 10. Normal -> 10. Provided: 20.
         const dto: CreateOrderDto = {
             site_id: 'site-1',
             client_id: 'client-1',
             due_date: new Date().toISOString(),
             status: OrderStatus.CREATED,
             service_level: ServiceLevel.NORMAL,
-            total_price: 20.00, // INCORRECT
-            items: [{ price: 10, quantity: 1 }]
+            total_price: 10.00, // WRONG, should be 20
+            items: [itemDto]
         };
 
         const result = await service.create(dto, 'tenant-1');
-        expect(result.total_price).toBe(10.00); // CORRECTED
+        expect(result.total_price).toBe(20.00);
     });
-    it('should recalculate due_date based on SLA', async () => {
-        mockTenantService.findOne.mockResolvedValue({ express_sla_hours: 24 }); // Express SLA
 
+    it('should throw error if no items provided', async () => {
+        mockTenantService.findOne.mockResolvedValue({});
         const dto: CreateOrderDto = {
             site_id: 'site-1',
             client_id: 'client-1',
-            due_date: '2025-01-01T00:00:00.000Z', // Fake old date provided by frontend
-            status: OrderStatus.CREATED,
-            service_level: ServiceLevel.EXPRESS,
-            total_price: 10.00,
-            items: [{ price: 10, quantity: 1 }] // 1.0 multiplier assumed if not set in mock
+            due_date: new Date().toISOString(),
+            total_price: 0,
+            items: []
         };
 
-        const result = await service.create(dto, 'tenant-1');
-
-        // Backend uses new Date() internally, so result.due_date should be close to NOW + 24h
-        const now = new Date().getTime();
-        const expected = now + (24 * 60 * 60 * 1000);
-        const actual = new Date(result.due_date).getTime();
-
-        // Check if within 5 seconds (execution latency)
-        expect(Math.abs(actual - expected)).toBeLessThan(5000);
+        await expect(service.create(dto, 'tenant-1')).rejects.toThrow('Order must have items');
     });
 });

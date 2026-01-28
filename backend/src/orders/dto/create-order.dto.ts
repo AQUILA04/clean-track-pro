@@ -1,5 +1,26 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, IsDateString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, IsDateString, ValidateNested, ArrayMinSize, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ServiceLevel, OrderStatus } from '../entities/order.entity';
+
+export class CreateOrderItemDto {
+    @IsNotEmpty()
+    @IsUUID()
+    article_type_id: string;
+
+    @IsNotEmpty()
+    @IsUUID()
+    service_definition_id: string;
+
+    @IsNotEmpty()
+    @IsNumber()
+    @Min(1)
+    quantity: number;
+
+    // Price is optional here as backend calculates it, but can be passed for verification
+    @IsOptional()
+    @IsNumber()
+    price?: number;
+}
 
 export class CreateOrderDto {
     @IsNotEmpty()
@@ -18,7 +39,7 @@ export class CreateOrderDto {
     @IsEnum(ServiceLevel)
     service_level?: ServiceLevel;
 
-    @IsNotEmpty() // Can be optional if backend calculates it, but initial draft implies frontend suggests it
+    @IsNotEmpty()
     @IsDateString()
     due_date: string; // ISO Date string
 
@@ -26,13 +47,9 @@ export class CreateOrderDto {
     @IsNumber()
     total_price: number;
 
-    // Items needed for calculation verification
-    // For MVP/Story 4.2 focusing on Header/Price, we need items to verify price.
-    // If not provided, we can't verify price accurately unless we assume trust or simple check.
-    // As per Story 4.2 AC2 "Price Recalculation", price depends on items.
-    // So we MUST accept items in DTO even if we don't save them in this specific simplified entity file yet
-    // (though architecture.md mentions table order_items)
-    // I'll add items locally to DTO for validation logic.
-    @IsOptional()
-    items?: { price: number; quantity: number }[];
+    @IsNotEmpty()
+    @ArrayMinSize(1)
+    @ValidateNested({ each: true })
+    @Type(() => CreateOrderItemDto)
+    items: CreateOrderItemDto[];
 }

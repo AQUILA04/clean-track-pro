@@ -1,9 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Order, ServiceLevel } from './entities/order.entity';
+import { Repository, DataSource } from 'typeorm';
+import { Order, ServiceLevel, OrderStatus } from './entities/order.entity';
+import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { TenantService } from '../tenant/tenant.service';
+import { PricingService } from '../catalog/services/pricing.service';
 
 @Injectable()
 export class OrdersService {
@@ -13,58 +15,87 @@ export class OrdersService {
         @InjectRepository(Order)
         private ordersRepository: Repository<Order>,
         private tenantService: TenantService,
+        private pricingService: PricingService,
+        private dataSource: DataSource
     ) { }
 
     async create(createOrderDto: CreateOrderDto, tenantId: string): Promise<Order> {
         this.logger.log(`Creating order for tenant ${tenantId}`);
 
-        // 1. Fetch Tenant Config
-        const tenant = await this.tenantService.findOne(tenantId);
+        return await this.dataSource.transaction(async manager => {
+            // 1. Fetch Tenant Config
+            const tenant = await this.tenantService.findOne(tenantId);
 
-        // 2. Verify Price Logic
-        // Calculate Expected Price
-        let calculatedTotal = createOrderDto.total_price;
+            // 2. Calculate Total Price and Validate Items
+            let calculatedTotal = 0;
+            const orderItemsByEntity: OrderItem[] = [];
 
-        if (createOrderDto.items && createOrderDto.items.length > 0) {
-            const itemsTotal = createOrderDto.items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+            if (createOrderDto.items && createOrderDto.items.length > 0) {
+                for (const itemDto of createOrderDto.items) {
+                    // Fetch authoritative price
+                    const unitPrice = await this.pricingService.getPrice(
+                        tenantId,
+                        itemDto.article_type_id,
+                        itemDto.service_definition_id
+                    );
 
-            const isExpress = createOrderDto.service_level === ServiceLevel.EXPRESS;
-            const multiplier = isExpress && tenant.express_multiplier ? Number(tenant.express_multiplier) : 1.0;
+                    calculatedTotal += (unitPrice * itemDto.quantity);
 
-            const expectedTotal = Number((itemsTotal * multiplier).toFixed(2));
-            const providedTotal = Number(createOrderDto.total_price); // Assuming 2 decimals
+                    // Prepare OrderItem entity (not saved yet)
+                    const orderItem = new OrderItem();
+                    orderItem.article_type_id = itemDto.article_type_id;
+                    orderItem.service_definition_id = itemDto.service_definition_id;
+                    orderItem.quantity = itemDto.quantity;
+                    orderItem.price = unitPrice; // Trust backend price
+                    orderItemsByEntity.push(orderItem);
+                }
 
-            // Allow small epsilon for floating point logic, though .toFixed(2) comparison is safer
-            if (Math.abs(expectedTotal - providedTotal) > 0.05) {
-                this.logger.warn(`Price Mismatch detected. Provided: ${providedTotal}, Calculated: ${expectedTotal}. overriding with calculated.`);
-                calculatedTotal = expectedTotal; // CORRECT & RETURN strategy
+                // Apply Multiplier
+                const isExpress = createOrderDto.service_level === ServiceLevel.EXPRESS;
+                const multiplier = isExpress && tenant.express_multiplier ? Number(tenant.express_multiplier) : 1.0;
+                calculatedTotal = Number((calculatedTotal * multiplier).toFixed(2));
+
+                // Log mismatch if needed, but ALWAYS use calculated total
+                if (Math.abs(calculatedTotal - Number(createOrderDto.total_price)) > 0.05) {
+                    this.logger.warn(`Price Mismatch. Provided: ${createOrderDto.total_price}, Calculated: ${calculatedTotal}. Using Calculated.`);
+                }
             } else {
-                this.logger.log(`Price Verified. Match.`);
+                this.logger.warn('Creating order with NO items. Price set to 0 or provided default.');
+                // Should we block empty orders? Story AC says "Prevents validation if Order Draft is empty".
+                // Controller/DTO checks validaton, but logical check here:
+                throw new BadRequestException('Order must have items.'); // Or rely on DTO @ArrayMinSize
             }
-        } else {
-            this.logger.warn('No items provided in order, skipping price verification.');
-        }
 
-        // 3. Due Date Verification
-        const createdDate = new Date();
-        const isExpress = createOrderDto.service_level === ServiceLevel.EXPRESS;
-        const slaHours = isExpress ? (tenant.express_sla_hours || 24) : 48; // Standard SLA 48h hardcoded for now matching frontend default
+            // 3. Due Date Calculation
+            const createdDate = new Date();
+            const isExpress = createOrderDto.service_level === ServiceLevel.EXPRESS;
+            const slaHours = isExpress ? (tenant.express_sla_hours || 24) : 48;
+            const expectedDueDate = new Date(createdDate.getTime() + (slaHours * 60 * 60 * 1000));
 
-        // Simple manual addHours logic since backend doesn't have date-fns yet (avoiding dependency add if possible for this fix)
-        const expectedDueDate = new Date(createdDate.getTime() + (slaHours * 60 * 60 * 1000));
+            // 4. Create Order Entity
+            const newOrder = manager.create(Order, {
+                tenant_id: tenantId,
+                site_id: createOrderDto.site_id,
+                client_id: createOrderDto.client_id,
+                status: OrderStatus.CREATED,
+                service_level: isExpress ? ServiceLevel.EXPRESS : ServiceLevel.NORMAL,
+                due_date: expectedDueDate,
+                total_price: calculatedTotal,
+                created_at: createdDate
+            });
 
-        // We will OVERRIDE the due_date to ensure consistency with backend rules
-        const finalDueDate = expectedDueDate;
+            // Save Order first to generate ID
+            const savedOrder = await manager.save(newOrder);
 
-        // 4. Create Order
-        const newOrder = this.ordersRepository.create({
-            ...createOrderDto,
-            tenant_id: tenantId,
-            total_price: calculatedTotal,
-            due_date: finalDueDate,
-            created_at: createdDate
+            // 5. Associate and Save Items
+            for (const item of orderItemsByEntity) {
+                item.order = savedOrder;
+                // Use manager to save items to ensure transaction scope
+                await manager.save(OrderItem, item);
+            }
+
+            // Return full order
+            return savedOrder;
         });
-
-        return this.ordersRepository.save(newOrder);
     }
 }

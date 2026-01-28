@@ -45,4 +45,20 @@ export class PricingService {
             relations: ['service_definition'],
         });
     }
+
+    async getPrice(tenantId: string, articleTypeId: string, serviceDefinitionId: string): Promise<number> {
+        const priceDef = await this.servicePriceRepository.findOne({
+            where: {
+                tenant_id: tenantId,
+                article_type_id: articleTypeId,
+                service_definition_id: serviceDefinitionId
+            }
+        });
+
+        if (!priceDef) {
+            throw new NotFoundException(`Price not defined for article ${articleTypeId} and service ${serviceDefinitionId}`);
+        }
+
+        return Number(priceDef.price);
+    }
 }

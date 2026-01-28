@@ -4,6 +4,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useSession } from 'next-auth/react';
 import { calculateOrderTotal, calculateDueDate } from '../utils/pricing.utils';
 import { TenantService } from '../services/tenant.service';
+import { OrdersService } from '../services/orders.service';
+import { ServiceLevel } from '../types/create-order.dto';
+import { useToast } from '../components/ui/simple-toast';
 
 export interface OrderItemDraft {
     articleId: string;
@@ -33,6 +36,7 @@ interface OrderDraftContextType extends OrderDraftState {
     toggleExpress: () => void;
     totalPrice: number;
     estimatedDueDate: Date | null;
+    validateOrder: () => Promise<void>;
 }
 
 const OrderDraftContext = createContext<OrderDraftContextType | undefined>(undefined);
@@ -185,8 +189,75 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
             clientId: null,
             clientName: null,
             items: [],
+            isExpress: false,
         });
     }, []);
+
+    const { toast } = useToast();
+
+    const validateOrder = useCallback(async () => {
+        if (!state.clientId) {
+            toast({
+                title: 'Validation Error',
+                description: 'Please select a client first.',
+                variant: 'destructive',
+            });
+            return;
+        }
+        if (state.items.length === 0) {
+            toast({
+                title: 'Validation Error',
+                description: 'Order draft is empty.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        try {
+            // Retrieve site_id from session or use tenant_id if site_id is missing (simple tenant-scoped logic)
+            // Casting session.user to any to access custom claims that might not be in generic definition yet
+            const user = session?.user as any;
+            const siteId = user?.site_id || user?.tenant_id; // Fallback to tenant_id if site_id not explicit
+
+            if (!siteId) {
+                toast({
+                    title: 'Context Error',
+                    description: 'Missing Site/Tenant ID in user session.',
+                    variant: 'destructive',
+                });
+                return;
+            }
+
+            await OrdersService.create({
+                site_id: siteId,
+                client_id: state.clientId,
+                service_level: state.isExpress ? ServiceLevel.EXPRESS : ServiceLevel.NORMAL,
+                due_date: estimatedDueDate?.toISOString() || new Date().toISOString(),
+                total_price: totalPrice,
+                items: state.items.map(item => ({
+                    article_type_id: item.articleId,
+                    service_definition_id: item.serviceId,
+                    quantity: item.quantity,
+                    price: item.price
+                }))
+            });
+
+            toast({
+                title: 'Order Created',
+                description: 'Order created successfully!',
+                variant: 'success',
+            });
+            clearDraft();
+
+        } catch (error: any) {
+            console.error('Failed to validate order', error);
+            toast({
+                title: 'Order Creation Failed',
+                description: `Failed to create order: ${error.message || 'Unknown error'}`,
+                variant: 'destructive',
+            });
+        }
+    }, [state.clientId, state.items, state.isExpress, estimatedDueDate, totalPrice, session, clearDraft, toast]);
 
     return (
         <OrderDraftContext.Provider
@@ -200,7 +271,8 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
                 clearDraft,
                 toggleExpress,
                 totalPrice,
-                estimatedDueDate
+                estimatedDueDate,
+                validateOrder
             }}
         >
             {children}

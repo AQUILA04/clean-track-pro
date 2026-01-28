@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, BadRequestException } from '@nestjs/common';
 import { AuthGuard, RoleGuard } from 'nest-keycloak-connect';
 import { CurrentUser, type AuthUser } from '../auth/decorators/current-user.decorator';
 import { OrdersService } from './orders.service';
@@ -12,7 +12,7 @@ export class OrdersController {
     @Post()
     create(@Body() createOrderDto: CreateOrderDto, @CurrentUser() user: AuthUser) {
         if (!user.tenant_id) {
-            throw new Error('Tenant ID required to create order');
+            throw new BadRequestException('Tenant ID required to create order');
         }
         return this.ordersService.create(createOrderDto, user.tenant_id);
     }
