@@ -9,6 +9,7 @@ import { UserModule } from './user/user.module';
 import { RlsModule } from './shared/database/rls/rls.module';
 import { ClientModule } from './clients/client.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { OrdersModule } from './orders/orders.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
 
@@ -39,7 +40,9 @@ import * as redisStore from 'cache-manager-redis-store';
     UserModule,
     RlsModule,
     ClientModule,
+    ClientModule,
     CatalogModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

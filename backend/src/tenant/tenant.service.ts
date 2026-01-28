@@ -63,4 +63,12 @@ export class TenantService {
         }
         return updatedTenant;
     }
+
+    async findOne(id: string): Promise<Tenant> {
+        const tenant = await this.tenantRepository.findOneBy({ id });
+        if (!tenant) {
+            throw new NotFoundException(`Tenant with ID ${id} not found`);
+        }
+        return tenant;
+    }
 }

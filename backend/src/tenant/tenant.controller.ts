@@ -59,6 +59,19 @@ export class TenantController {
             .build();
     }
 
+    @Get('me')
+    @Roles({ roles: ['Admin_Tenant', 'User_Site'] }) // Allow User_Site to fetch config
+    async getMe(@CurrentUser() user: AuthUser) {
+        if (!user.tenant_id) {
+            throw new Error('Tenant ID missing for user');
+        }
+        const tenant = await this.tenantService.findOne(user.tenant_id);
+        return Response.builder()
+            .status(HttpStatus.OK)
+            .data(tenant)
+            .build();
+    }
+
     /**
      * AC3 Demonstration: Protected endpoint accessible by Admin_Tenant and Superadmin
      * Validates JWT token and extracts AuthUser context
@@ -67,7 +80,7 @@ export class TenantController {
     @Roles({ roles: ['Admin_Tenant', 'Superadmin'] })
     findAll(@CurrentUser() user: AuthUser) {
         // Log user context to demonstrate AC3
-        console.log('User context:', { id: user.id, roles: user.roles, tenant_id: user.tenant_id });
+        // console.log('User context:', { id: user.id, roles: user.roles, tenant_id: user.tenant_id });
         return this.tenantService.findAll();
     }
 
@@ -80,8 +93,6 @@ export class TenantController {
         @Param('id') id: string,
         @CurrentUser() user: AuthUser,
     ) {
-        // Demonstrate tenant_id extraction from JWT
-        console.log('Finding tenant:', id, 'for user:', user.email, 'tenant_id:', user.tenant_id);
         return { id, message: 'Tenant details would be returned here', user: { email: user.email, roles: user.roles } };
     }
 

@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { calculateOrderTotal, calculateDueDate } from '../utils/pricing.utils';
+import { TenantService } from '../services/tenant.service';
 
 export interface OrderItemDraft {
     articleId: string;
@@ -17,6 +19,8 @@ interface OrderDraftState {
     clientId: string | null;
     clientName: string | null; // Cached for display
     items: OrderItemDraft[];
+    isExpress: boolean;
+    tenantConfig?: { express_multiplier: number; express_sla_hours: number };
 }
 
 interface OrderDraftContextType extends OrderDraftState {
@@ -26,6 +30,9 @@ interface OrderDraftContextType extends OrderDraftState {
     updateService: (index: number, serviceId: string, serviceName: string, price: number) => void;
     removeItem: (index: number) => void;
     clearDraft: () => void;
+    toggleExpress: () => void;
+    totalPrice: number;
+    estimatedDueDate: Date | null;
 }
 
 const OrderDraftContext = createContext<OrderDraftContextType | undefined>(undefined);
@@ -43,6 +50,7 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         clientId: null,
         clientName: null,
         items: [],
+        isExpress: false,
     });
 
     const [isLoaded, setIsLoaded] = useState(false);
@@ -56,7 +64,13 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
             try {
                 const parsed = JSON.parse(saved);
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-                setState(parsed);
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+                setState(prev => ({
+                    ...parsed,
+                    // Ensure new fields exist if loading old state
+                    isExpress: parsed.isExpress ?? false,
+                    tenantConfig: prev.tenantConfig // Keep config if we already fetched it, or it will be populated below
+                }));
             } catch (e) {
                 console.error('Failed to parse order draft', e);
             }
@@ -64,12 +78,51 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         setIsLoaded(true);
     }, [tenantId, storageKey]);
 
+    // Fetch Tenant Config
+    useEffect(() => {
+        if (!tenantId) return;
+        const fetchConfig = async () => {
+            try {
+                const tenant = await TenantService.getCurrentTenant();
+                setState(prev => ({
+                    ...prev,
+                    tenantConfig: {
+                        express_multiplier: tenant.express_multiplier,
+                        express_sla_hours: tenant.express_sla_hours
+                    }
+                }));
+            } catch (e) {
+                console.error('Failed to fetch tenant config', e);
+            }
+        };
+        fetchConfig();
+    }, [tenantId]);
+
     // Save to localStorage on change
     useEffect(() => {
         if (isLoaded && tenantId) {
-            localStorage.setItem(storageKey, JSON.stringify(state));
+            // Don't save tenantConfig to localstorage necessarily, mainly data
+            const { tenantConfig, ...toSave } = state;
+            localStorage.setItem(storageKey, JSON.stringify(toSave));
         }
     }, [state, isLoaded, tenantId, storageKey]);
+
+    // Derived values
+    const totalPrice = React.useMemo(() => {
+        return calculateOrderTotal(
+            state.items.map(i => ({ price: i.price, quantity: i.quantity })),
+            state.isExpress,
+            state.tenantConfig || {}
+        );
+    }, [state.items, state.isExpress, state.tenantConfig]);
+
+    const estimatedDueDate = React.useMemo(() => {
+        return calculateDueDate(state.isExpress, state.tenantConfig || {});
+    }, [state.isExpress, state.tenantConfig]);
+
+    const toggleExpress = useCallback(() => {
+        setState(prev => ({ ...prev, isExpress: !prev.isExpress }));
+    }, []);
 
     const setClient = useCallback((clientId: string, clientName: string) => {
         setState(prev => ({ ...prev, clientId, clientName }));
@@ -145,6 +198,9 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
                 updateService,
                 removeItem,
                 clearDraft,
+                toggleExpress,
+                totalPrice,
+                estimatedDueDate
             }}
         >
             {children}
