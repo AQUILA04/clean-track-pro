@@ -15,9 +15,19 @@ describe('OrdersService', () => {
     let pricingService: PricingService;
 
     // Mock Managers and Repositories
+    const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn(),
+    };
+
     const mockOrderRepository = {
         create: jest.fn().mockImplementation((dto) => dto),
         save: jest.fn().mockImplementation((order) => Promise.resolve({ id: 'order-id', ...order })),
+        findOne: jest.fn(),
+        count: jest.fn(),
+        createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
     };
 
     const mockEntityManager = {
@@ -136,14 +146,15 @@ describe('OrdersService', () => {
 
         await expect(service.create(dto, 'tenant-1')).rejects.toThrow('Order must have items');
     });
+
     describe('updateStatus', () => {
         it('should update status for valid transition', async () => {
-            mockOrderRepository.findOne = jest.fn().mockResolvedValue({
+            mockOrderRepository.findOne.mockResolvedValue({
                 id: 'order-1',
                 tenant_id: 'tenant-1',
                 status: OrderStatus.CREATED
             });
-            mockOrderRepository.save = jest.fn().mockImplementation(o => Promise.resolve(o));
+            mockOrderRepository.save.mockImplementation(o => Promise.resolve(o));
 
             const result = await service.updateStatus('order-1', OrderStatus.IN_PROGRESS, 'tenant-1');
             expect(result.status).toBe(OrderStatus.IN_PROGRESS);
@@ -151,7 +162,7 @@ describe('OrdersService', () => {
         });
 
         it('should throw BadRequestException for invalid transition', async () => {
-            mockOrderRepository.findOne = jest.fn().mockResolvedValue({
+            mockOrderRepository.findOne.mockResolvedValue({
                 id: 'order-1',
                 tenant_id: 'tenant-1',
                 status: OrderStatus.CREATED
@@ -162,10 +173,44 @@ describe('OrdersService', () => {
         });
 
         it('should throw BadRequestException if order not found', async () => {
-            mockOrderRepository.findOne = jest.fn().mockResolvedValue(null);
+            mockOrderRepository.findOne.mockResolvedValue(null);
 
             await expect(service.updateStatus('order-1', OrderStatus.IN_PROGRESS, 'tenant-1'))
                 .rejects.toThrow(BadRequestException);
+        });
+    });
+
+    describe('getDashboardStats', () => {
+        it('should return aggregated stats for tenant', async () => {
+            mockOrderRepository.count
+                .mockResolvedValueOnce(5)  // ordersToday
+                .mockResolvedValueOnce(3); // pendingOrders
+
+            mockQueryBuilder.getRawOne.mockResolvedValue({ total: "150.50" });
+
+            const result = await service.getDashboardStats('tenant-1');
+
+            expect(result).toEqual({
+                ordersToday: 5,
+                revenueToday: 150.50,
+                pendingOrders: 3
+            });
+
+            expect(mockOrderRepository.count).toHaveBeenCalledTimes(2);
+            expect(mockOrderRepository.createQueryBuilder).toHaveBeenCalledWith('order');
+            expect(mockQueryBuilder.where).toHaveBeenCalledWith('order.tenant_id = :tenantId', { tenantId: 'tenant-1' });
+        });
+
+        it('should handle zero revenue correctly', async () => {
+            mockOrderRepository.count
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(0);
+
+            mockQueryBuilder.getRawOne.mockResolvedValue({ total: null });
+
+            const result = await service.getDashboardStats('tenant-1');
+
+            expect(result.revenueToday).toBe(0);
         });
     });
 });

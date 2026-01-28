@@ -38,5 +38,14 @@ export const OrdersService = {
             withCredentials: true,
         });
         return response.data;
+    },
+
+    async getDashboardStats() {
+        const headers = await getAuthHeaders();
+        const response = await axios.get(`${API_URL}/orders/stats/dashboard`, {
+            headers,
+            withCredentials: true,
+        });
+        return response.data;
     }
 };

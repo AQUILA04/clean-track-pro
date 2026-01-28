@@ -1,12 +1,15 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, Between, In } from 'typeorm';
 import { Order, ServiceLevel } from './entities/order.entity';
 import { OrderStatus } from './enums/order-status.enum';
 import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { TenantService } from '../tenant/tenant.service';
 import { PricingService } from '../catalog/services/pricing.service';
+import { DashboardStatsDto } from './dto/dashboard-stats.dto';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { startOfDay, endOfDay } from 'date-fns';
 
 @Injectable()
 export class OrdersService {
@@ -131,5 +134,49 @@ export class OrdersService {
         if (!allowed.includes(next)) {
             throw new BadRequestException(`Invalid status transition from ${current} to ${next}`);
         }
+    }
+
+
+    async getDashboardStats(tenantId: string, timezone: string = 'UTC'): Promise<DashboardStatsDto> {
+        // Calculate start/end of day relative to the tenant's timezone
+        const now = new Date();
+        const startOfDayZoned = startOfDay(toZonedTime(now, timezone));
+        const endOfDayZoned = endOfDay(toZonedTime(now, timezone));
+
+        // Convert back to UTC for database query (assuming DB stores in UTC)
+        const todayStart = fromZonedTime(startOfDayZoned, timezone);
+        const todayEnd = fromZonedTime(endOfDayZoned, timezone);
+
+        // 1. Orders Today
+        const ordersToday = await this.ordersRepository.count({
+            where: {
+                tenant_id: tenantId,
+                created_at: Between(todayStart, todayEnd)
+            }
+        });
+
+        // 2. Revenue Today
+        const revenueResult = await this.ordersRepository
+            .createQueryBuilder('order')
+            .select('SUM(order.total_price)', 'total')
+            .where('order.tenant_id = :tenantId', { tenantId })
+            .andWhere('order.created_at BETWEEN :start AND :end', { start: todayStart, end: todayEnd })
+            .getRawOne();
+
+        const revenueToday = revenueResult && revenueResult.total ? parseFloat(revenueResult.total) : 0;
+
+        // 3. Pending Orders
+        const pendingOrders = await this.ordersRepository.count({
+            where: {
+                tenant_id: tenantId,
+                status: In([OrderStatus.CREATED, OrderStatus.IN_PROGRESS, OrderStatus.READY])
+            }
+        });
+
+        return {
+            ordersToday,
+            revenueToday,
+            pendingOrders
+        };
     }
 }
