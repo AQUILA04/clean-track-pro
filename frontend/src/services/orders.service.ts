@@ -40,11 +40,11 @@ export const OrdersService = {
         return response.data;
     },
 
-    async getDashboardStats(startDate?: string, endDate?: string) {
+    async getDashboardStats(startDate?: string, endDate?: string, timezone?: string) {
         const headers = await getAuthHeaders();
         const response = await axios.get(`${API_URL}/orders/stats/dashboard`, {
             headers,
-            params: { startDate, endDate },
+            params: { startDate, endDate, timezone },
             withCredentials: true,
         });
         return response.data;

@@ -25,7 +25,8 @@ export default function DashboardPage() {
         const fetchStats = async () => {
             setLoading(true);
             try {
-                const data = await OrdersService.getDashboardStats(dateRange.startDate, dateRange.endDate);
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const data = await OrdersService.getDashboardStats(dateRange.startDate, dateRange.endDate, timezone);
                 setStats(data);
             } catch (error) {
                 console.error('Failed to fetch dashboard stats:', error);
@@ -86,17 +87,17 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <KPICard
-                    label="Orders Today"
+                    label={`Orders (${rangeLabel})`}
                     value={stats.ordersToday}
                     icon={<ShoppingBag size={24} />}
                 />
                 <KPICard
-                    label="Revenue Today"
+                    label={`Revenue (${rangeLabel})`}
                     value={new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(stats.revenueToday)}
                     icon={<CreditCard size={24} />}
                 />
                 <KPICard
-                    label="Pending Orders"
+                    label={`Pending Orders (${rangeLabel})`}
                     value={stats.pendingOrders}
                     icon={<Clock size={24} />}
                 />

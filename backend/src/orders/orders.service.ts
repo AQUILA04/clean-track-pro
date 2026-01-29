@@ -179,11 +179,12 @@ export class OrdersService {
 
         const revenueToday = revenueResult && revenueResult.total ? parseFloat(revenueResult.total) : 0;
 
-        // 3. Pending Orders
+        // 3. Pending Orders (within the selected date range)
         const pendingOrders = await this.ordersRepository.count({
             where: {
                 tenant_id: tenantId,
-                status: In([OrderStatus.CREATED, OrderStatus.IN_PROGRESS, OrderStatus.READY])
+                status: In([OrderStatus.CREATED, OrderStatus.IN_PROGRESS, OrderStatus.READY]),
+                created_at: Between(startPeriod, endPeriod)
             }
         });
 

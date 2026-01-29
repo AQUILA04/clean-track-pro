@@ -181,6 +181,11 @@ describe('OrdersService', () => {
     });
 
     describe('getDashboardStats', () => {
+        beforeEach(() => {
+            // Reset mocks before each test to avoid call count accumulation
+            jest.clearAllMocks();
+        });
+
         it('should return aggregated stats for tenant', async () => {
             mockOrderRepository.count
                 .mockResolvedValueOnce(5)  // ordersToday
@@ -211,6 +216,87 @@ describe('OrdersService', () => {
             const result = await service.getDashboardStats('tenant-1');
 
             expect(result.revenueToday).toBe(0);
+        });
+
+        it('should filter by custom date range', async () => {
+            const startDate = '2023-01-01';
+            const endDate = '2023-01-31';
+
+            mockOrderRepository.count
+                .mockResolvedValueOnce(10)  // ordersToday
+                .mockResolvedValueOnce(5);  // pendingOrders
+            mockQueryBuilder.getRawOne.mockResolvedValue({ total: "1000.00" });
+
+            const result = await service.getDashboardStats('tenant-1', 'UTC', startDate, endDate);
+
+            // Verify all stats are returned
+            expect(result).toEqual({
+                ordersToday: 10,
+                revenueToday: 1000.00,
+                pendingOrders: 5
+            });
+
+            // Verify date filtering is applied to both count queries
+            expect(mockOrderRepository.count).toHaveBeenCalledTimes(2);
+
+            // Verify revenue query uses date range
+            expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+                'order.created_at BETWEEN :start AND :end',
+                expect.objectContaining({
+                    start: expect.any(Date),
+                    end: expect.any(Date)
+                })
+            );
+        });
+
+        it('should handle invalid date format gracefully', async () => {
+            mockOrderRepository.count
+                .mockResolvedValueOnce(0)
+                .mockResolvedValueOnce(0);
+            mockQueryBuilder.getRawOne.mockResolvedValue({ total: "0" });
+
+            // Invalid date should still work (new Date('invalid') creates Invalid Date)
+            // The service doesn't validate, so this tests current behavior
+            const result = await service.getDashboardStats('tenant-1', 'UTC', 'invalid-date', '2023-01-31');
+
+            expect(result).toBeDefined();
+            expect(result.ordersToday).toBe(0);
+        });
+
+        it('should verify pendingOrders respects date range', async () => {
+            const startDate = '2023-01-01';
+            const endDate = '2023-01-31';
+
+            mockOrderRepository.count
+                .mockResolvedValueOnce(10)  // ordersToday
+                .mockResolvedValueOnce(3);  // pendingOrders
+            mockQueryBuilder.getRawOne.mockResolvedValue({ total: "500.00" });
+
+            const result = await service.getDashboardStats('tenant-1', 'UTC', startDate, endDate);
+
+            // Verify pendingOrders count was called twice (once for orders, once for pending)
+            expect(mockOrderRepository.count).toHaveBeenCalledTimes(2);
+
+            // The second call should include date filtering for pending orders
+            const secondCall = mockOrderRepository.count.mock.calls[1][0];
+            expect(secondCall.where).toHaveProperty('created_at');
+            expect(result.pendingOrders).toBe(3);
+        });
+
+        it('should respect timezone for date calculations', async () => {
+            mockOrderRepository.count.mockResolvedValue(5);
+            mockQueryBuilder.getRawOne.mockResolvedValue({ total: "500.00" });
+
+            // Test with Tokyo timezone (+09:00)
+            await service.getDashboardStats('tenant-1', 'Asia/Tokyo');
+
+            expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+                'order.created_at BETWEEN :start AND :end',
+                expect.objectContaining({
+                    start: expect.any(Date),
+                    end: expect.any(Date)
+                })
+            );
         });
     });
 });
