@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { StorageService } from './storage.service';
 import { CreateStorageSlotDto } from './dto/create-storage-slot.dto';
+import { AssignOrderDto } from './dto/assign-order.dto';
 import { AuthGuard, RoleGuard, Roles } from 'nest-keycloak-connect';
 import { TenancyGuard } from '../shared/guards/tenancy.guard';
 
@@ -19,5 +20,12 @@ export class StorageController {
     @Roles({ roles: ['realm:Admin_Site', 'realm:User_Site', 'realm:Super_Admin'] })
     findAll(@Query('site_id') siteId: string) {
         return this.storageService.findAll(siteId);
+    }
+
+    @Post('assign')
+    @Roles({ roles: ['realm:Admin_Site', 'realm:User_Site', 'realm:Super_Admin'] })
+    @HttpCode(HttpStatus.OK)
+    assign(@Body() assignOrderDto: AssignOrderDto) {
+        return this.storageService.assignOrderToSlot(assignOrderDto);
     }
 }

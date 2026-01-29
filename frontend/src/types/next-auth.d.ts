@@ -9,6 +9,7 @@ declare module 'next-auth' {
             email?: string | null;
             image?: string | null;
             tenant_id?: string;
+            site_id?: string;
             site_ids?: string[];
             roles?: string[];
         };

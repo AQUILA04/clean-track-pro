@@ -50,5 +50,8 @@ export class Order {
 
     @OneToMany(() => OrderItem, item => item.order, { cascade: true })
     items: OrderItem[];
+
+    @OneToMany('OrderStorage', (storage: any) => storage.order)
+    storage_assignments: any[];
 }
 

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Unique } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Unique, OneToMany } from 'typeorm';
 
 export enum StorageSlotStatus {
     FREE = 'FREE',
@@ -33,4 +33,7 @@ export class StorageSlot {
 
     @UpdateDateColumn({ name: 'updated_at' })
     updated_at: Date;
+
+    @OneToMany('OrderStorage', (storage: any) => storage.shelf_slot)
+    stored_orders: any[];
 }

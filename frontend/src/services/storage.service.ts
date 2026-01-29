@@ -53,5 +53,17 @@ export const StorageService = {
         }
         const res = await response.json();
         return res.data || res;
+    },
+
+    assignOrder: async (orderId: string, slotId: string): Promise<void> => {
+        const response = await fetch(`${API_URL}/storage/assign`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ order_id: orderId, shelf_slot_id: slotId }),
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to assign order');
+        }
     }
 };
