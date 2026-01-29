@@ -39,7 +39,8 @@ export class UserService {
     }
 
     async getUsers(tenantId: string) {
-        const realm = process.env.KEYCLOAK_REALM || 'master';
+        const tenant = await this.tenantService.findOne(tenantId);
+        const realm = tenant.subdomain;
         return this.keycloakService.findUsersByAttribute(realm, 'tenant_id', tenantId);
     }
 }

@@ -6,22 +6,20 @@ import { TenantService, UpdateTenantBrandingDto } from '@/services/tenant.servic
 import { UserService, InviteUserDto } from '@/services/user.service';
 import { SiteService } from '@/services/site.service';
 
+import InviteUserModal from '@/components/admin/InviteUserModal';
+
 export default function AgencySettingsPage() {
     const [loading, setLoading] = useState(true);
     const [brandingForm, setBrandingForm] = useState<UpdateTenantBrandingDto>({ name: '', logoUrl: '' });
     const [users, setUsers] = useState<any[]>([]);
-    const [sites, setSites] = useState<any[]>([]);
 
     // Invitation Form State
-    const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteSiteId, setInviteSiteId] = useState('');
     const [showInviteModal, setShowInviteModal] = useState(false);
 
     useEffect(() => {
         // Fetch initial data
         setLoading(false);
         fetchUsers();
-        fetchSites();
     }, []);
 
     const fetchUsers = async () => {
@@ -33,14 +31,6 @@ export default function AgencySettingsPage() {
         }
     };
 
-    const fetchSites = async () => {
-        try {
-            const data = await SiteService.getAll();
-            setSites(data);
-        } catch (error) {
-            console.error('Failed to fetch sites', error);
-        }
-    };
 
     const handleBrandingSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -53,23 +43,9 @@ export default function AgencySettingsPage() {
         }
     };
 
-    const handleInviteSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await UserService.inviteUser({
-                email: inviteEmail,
-                role: 'Admin_Site', // Hardcoded as per story or allow selection
-                siteId: inviteSiteId
-            });
-            setShowInviteModal(false);
-            setInviteEmail('');
-            setInviteSiteId('');
-            alert('User invited successfully');
-            fetchUsers();
-        } catch (error) {
-            alert('Failed to invite user');
-            console.error(error);
-        }
+    const handleInviteSuccess = () => {
+        alert('User invited successfully');
+        fetchUsers();
     };
 
     if (loading) return <div className="p-8">Loading settings...</div>;
@@ -156,54 +132,11 @@ export default function AgencySettingsPage() {
             </section>
 
             {/* Invite Modal */}
-            {showInviteModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                        <h3 className="text-lg font-bold mb-4">Invite Admin_Site User</h3>
-                        <form onSubmit={handleInviteSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Email Address</label>
-                                <input
-                                    type="email"
-                                    required
-                                    className="w-full border p-2 rounded"
-                                    value={inviteEmail}
-                                    onChange={(e) => setInviteEmail(e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Target Site</label>
-                                <select
-                                    required
-                                    className="w-full border p-2 rounded"
-                                    value={inviteSiteId}
-                                    onChange={(e) => setInviteSiteId(e.target.value)}
-                                >
-                                    <option value="">Select a Site</option>
-                                    {sites.map(site => (
-                                        <option key={site.id} value={site.id}>{site.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex justify-end gap-2 mt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowInviteModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="bg-[#1A5AD7] text-white px-4 py-2 rounded hover:bg-blue-700"
-                                >
-                                    Send Invitation
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <InviteUserModal
+                isOpen={showInviteModal}
+                onClose={() => setShowInviteModal(false)}
+                onSuccess={handleInviteSuccess}
+            />
         </div>
     );
 }
