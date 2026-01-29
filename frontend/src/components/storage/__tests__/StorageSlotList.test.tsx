@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { StorageSlotList } from '../StorageSlotList';
-import { StorageSlotStatus } from '../../../services/storage.service';
+import { StorageSlotList } from '@/components/storage/StorageSlotList';
+import { StorageSlotStatus } from '@/services/storage.service';
 
 describe('StorageSlotList', () => {
     const mockSlots = [
@@ -35,12 +35,25 @@ describe('StorageSlotList', () => {
         expect(screen.getByText('No storage slots configured yet.')).toBeInTheDocument();
     });
 
-    it('renders list of slots', () => {
+    it('renders list of slots with correct status styles', () => {
         render(<StorageSlotList slots={mockSlots} isLoading={false} />);
 
-        expect(screen.getByText('A-01')).toBeInTheDocument();
-        expect(screen.getByText('FREE')).toBeInTheDocument();
-        expect(screen.getByText('A-02')).toBeInTheDocument();
-        expect(screen.getByText('OCCUPIED')).toBeInTheDocument();
+        // Verify first slot (FREE)
+        const slot1Name = screen.getByText('A-01');
+        const slot1Row = slot1Name.closest('tr');
+        expect(slot1Row).toBeInTheDocument();
+
+        const slot1Status = screen.getByText('FREE');
+        expect(slot1Status).toBeInTheDocument();
+        expect(slot1Status).toHaveClass('bg-green-100', 'text-green-800');
+
+        // Verify second slot (OCCUPIED)
+        const slot2Name = screen.getByText('A-02');
+        const slot2Row = slot2Name.closest('tr');
+        expect(slot2Row).toBeInTheDocument();
+
+        const slot2Status = screen.getByText('OCCUPIED');
+        expect(slot2Status).toBeInTheDocument();
+        expect(slot2Status).toHaveClass('bg-red-100', 'text-red-800');
     });
 });

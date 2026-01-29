@@ -84,10 +84,10 @@ development_status:
   6-2-order-storage-assignment: done
   6-3-client-pickup-delivery-verification: done
   epic-6-retrospective: optional
-  
+
   # Epic 7: Platform Hardening & Quality Assurance
   epic-7: in-progress
   7-1-security-hardening-agency-management: done
   7-2-dashboard-kpi-date-filtering: done
-  7-3-test-infrastructure-recovery: backlog
+  7-3-test-infrastructure-recovery: done
   epic-7-retrospective: optional
