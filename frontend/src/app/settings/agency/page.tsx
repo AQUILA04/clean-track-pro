@@ -4,11 +4,13 @@
 import { useState, useEffect } from 'react';
 import { TenantService, UpdateTenantBrandingDto } from '@/services/tenant.service';
 import { UserService, InviteUserDto } from '@/services/user.service';
+import { SiteService } from '@/services/site.service';
 
 export default function AgencySettingsPage() {
     const [loading, setLoading] = useState(true);
     const [brandingForm, setBrandingForm] = useState<UpdateTenantBrandingDto>({ name: '', logoUrl: '' });
     const [users, setUsers] = useState<any[]>([]);
+    const [sites, setSites] = useState<any[]>([]);
 
     // Invitation Form State
     const [inviteEmail, setInviteEmail] = useState('');
@@ -17,11 +19,9 @@ export default function AgencySettingsPage() {
 
     useEffect(() => {
         // Fetch initial data
-        // For now, we rely on backend for users. 
-        // For branding initial state, we ideally need currentUser's tenant ID and fetch details.
-        // Assuming TenantService.getCurrentTenant can provide it later, but currently we just set form.
         setLoading(false);
         fetchUsers();
+        fetchSites();
     }, []);
 
     const fetchUsers = async () => {
@@ -30,6 +30,15 @@ export default function AgencySettingsPage() {
             setUsers(data);
         } catch (error) {
             console.error('Failed to fetch users', error);
+        }
+    };
+
+    const fetchSites = async () => {
+        try {
+            const data = await SiteService.getAll();
+            setSites(data);
+        } catch (error) {
+            console.error('Failed to fetch sites', error);
         }
     };
 
@@ -163,15 +172,18 @@ export default function AgencySettingsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Target Site ID</label>
-                                <input
-                                    type="text"
+                                <label className="block text-sm font-medium mb-1">Target Site</label>
+                                <select
                                     required
                                     className="w-full border p-2 rounded"
                                     value={inviteSiteId}
                                     onChange={(e) => setInviteSiteId(e.target.value)}
-                                    placeholder="Enter Site ID"
-                                />
+                                >
+                                    <option value="">Select a Site</option>
+                                    {sites.map(site => (
+                                        <option key={site.id} value={site.id}>{site.name}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="flex justify-end gap-2 mt-4">
                                 <button

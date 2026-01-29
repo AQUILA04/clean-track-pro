@@ -1,6 +1,6 @@
 # Story 2.3: Cross-Agency Client Recognition
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -61,5 +61,8 @@ Antigravity (Gemini 2.0 Flash)
 ### Debug Log References
 
 ### Completion Notes List
+- Verified implementation via Story 2.2 audit.
+- Client entity is scoped to `tenant_id` only (no `site_id` restriction), ensuring cross-agency visibility by default.
+- `ClientService.search` strictly filters by `tenant_id`, ensuring isolation between tenants.
 
 ### File List

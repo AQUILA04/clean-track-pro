@@ -1,6 +1,6 @@
 # Story 2.2: Hybrid Client Search (Omnibox)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -138,6 +138,7 @@ None.
 ### File List
 - backend/package.json
 - backend/src/app.module.ts
+- backend/src/migrations/1769350800000-EnablePgTrgmAndGinIndexes.ts
 - backend/src/clients/client.controller.ts
 - backend/src/clients/client.service.ts
 - backend/src/clients/client.service.spec.ts

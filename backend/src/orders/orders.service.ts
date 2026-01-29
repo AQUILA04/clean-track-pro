@@ -137,21 +137,35 @@ export class OrdersService {
     }
 
 
-    async getDashboardStats(tenantId: string, timezone: string = 'UTC'): Promise<DashboardStatsDto> {
-        // Calculate start/end of day relative to the tenant's timezone
-        const now = new Date();
-        const startOfDayZoned = startOfDay(toZonedTime(now, timezone));
-        const endOfDayZoned = endOfDay(toZonedTime(now, timezone));
+    async getDashboardStats(
+        tenantId: string,
+        timezone: string = 'UTC',
+        startDate?: string,
+        endDate?: string
+    ): Promise<DashboardStatsDto> {
+        let startPeriod: Date;
+        let endPeriod: Date;
 
-        // Convert back to UTC for database query (assuming DB stores in UTC)
-        const todayStart = fromZonedTime(startOfDayZoned, timezone);
-        const todayEnd = fromZonedTime(endOfDayZoned, timezone);
+        if (startDate && endDate) {
+            // Use provided range (assuming YYYY-MM-DD from frontend, treated as start of that day in tenant TZ)
+            const startZoned = toZonedTime(new Date(startDate), timezone);
+            const endZoned = toZonedTime(new Date(endDate), timezone);
+            startPeriod = fromZonedTime(startOfDay(startZoned), timezone);
+            endPeriod = fromZonedTime(endOfDay(endZoned), timezone);
+        } else {
+            // Default to Today
+            const now = new Date();
+            const startOfDayZoned = startOfDay(toZonedTime(now, timezone));
+            const endOfDayZoned = endOfDay(toZonedTime(now, timezone));
+            startPeriod = fromZonedTime(startOfDayZoned, timezone);
+            endPeriod = fromZonedTime(endOfDayZoned, timezone);
+        }
 
         // 1. Orders Today
         const ordersToday = await this.ordersRepository.count({
             where: {
                 tenant_id: tenantId,
-                created_at: Between(todayStart, todayEnd)
+                created_at: Between(startPeriod, endPeriod)
             }
         });
 
@@ -160,7 +174,7 @@ export class OrdersService {
             .createQueryBuilder('order')
             .select('SUM(order.total_price)', 'total')
             .where('order.tenant_id = :tenantId', { tenantId })
-            .andWhere('order.created_at BETWEEN :start AND :end', { start: todayStart, end: todayEnd })
+            .andWhere('order.created_at BETWEEN :start AND :end', { start: startPeriod, end: endPeriod })
             .getRawOne();
 
         const revenueToday = revenueResult && revenueResult.total ? parseFloat(revenueResult.total) : 0;

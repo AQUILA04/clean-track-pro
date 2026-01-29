@@ -35,11 +35,16 @@ export class OrdersController {
 
     @Get('stats/dashboard')
     @Roles({ roles: ['realm:Admin_Site', 'realm:Admin_Tenant', 'realm:Super_Admin'] })
-    getDashboardStats(@CurrentUser() user: AuthUser, @Query('timezone') timezone?: string) {
+    getDashboardStats(
+        @CurrentUser() user: AuthUser,
+        @Query('timezone') timezone?: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
         if (!user.tenant_id) {
             throw new BadRequestException('Tenant ID required to fetch dashboard stats');
         }
-        return this.ordersService.getDashboardStats(user.tenant_id, timezone);
+        return this.ordersService.getDashboardStats(user.tenant_id, timezone, startDate, endDate);
     }
 
     @Get()

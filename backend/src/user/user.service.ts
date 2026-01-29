@@ -2,6 +2,8 @@
 import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { KeycloakService } from '../shared/keycloak/keycloak.service';
 import { InviteUserDto } from './dto/invite-user.dto';
+import { SiteService } from '../sites/site.service';
+import { TenantService } from '../tenant/tenant.service';
 
 @Injectable()
 export class UserService {
@@ -9,13 +11,18 @@ export class UserService {
 
     constructor(
         private readonly keycloakService: KeycloakService,
+        private readonly siteService: SiteService,
+        private readonly tenantService: TenantService,
     ) { }
 
     async inviteUser(tenantId: string, inviteUserDto: InviteUserDto) {
         this.logger.log(`Inviting user ${inviteUserDto.email} to tenant ${tenantId} for site ${inviteUserDto.siteId}`);
 
-        // Security: In a real app, verify siteId belongs to tenantId here via DB check.
-        // Assuming site validation passes for now or implemented in a specific SiteService.
+        // Security: Verify siteId belongs to tenantId
+        const isSiteValid = await this.siteService.validate(tenantId, inviteUserDto.siteId);
+        if (!isSiteValid) {
+            throw new ForbiddenException('Invalid Site ID for this Tenant');
+        }
 
         // Define attributes for the new user
         const attributes = {
@@ -24,15 +31,9 @@ export class UserService {
             role: [inviteUserDto.role] // Storing role in attribute for reference/groups mapping
         };
 
-        // Delegate to KeycloakService using the tenant's realm (logic to determine realm needed)
-        // For now using 'master' or configured realm from context if multi-tenancy is realm-based.
-        // Story says "Use the Tenant's Realm (extracted from JWT iss or context)".
-        // Assuming a single realm 'clean-track' for all tenants for this implementation phase 
-        // OR adhering to 'savedTenant.subdomain' as realm name from TenantService logic.
-        // Let's assume we use the default realm for now as per config, or we need to look up the tenant realm.
-        // For simplicity/AC, we will use the configured REALM from env.
-
-        const realm = process.env.KEYCLOAK_REALM || 'master';
+        // Fetch valid realm from Tenant configuration
+        const tenant = await this.tenantService.findOne(tenantId);
+        const realm = tenant.subdomain;
 
         return this.keycloakService.createUser(realm, inviteUserDto.email, attributes);
     }

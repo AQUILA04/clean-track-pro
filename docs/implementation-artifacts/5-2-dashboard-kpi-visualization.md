@@ -1,6 +1,6 @@
 # Story 5.2: Dashboard KPI Visualization
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -78,6 +78,12 @@ so that **I can monitor daily performance**.
 
 ### Agent Model Used
 - {{agent_model_name_version}}
+
+### Completion Notes List
+- Implemented Dashboard Stats API with Date Range support (startDate, endDate).
+- Created Dashboard Frontend with Date Filter UI (Today, Last 7 Days, Last 30 Days).
+- Implemented `KPICard` component.
+- Added `OrdersToday`, `RevenueToday`, `PendingOrders` metrics.
 
 ### File List
 - `backend/src/orders/orders.controller.ts`

@@ -13,6 +13,7 @@ import { OrdersModule } from './orders/orders.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
 import { StorageModule } from './storage/storage.module';
+import { SiteModule } from './sites/site.module';
 
 @Module({
   imports: [
@@ -43,7 +44,9 @@ import { StorageModule } from './storage/storage.module';
     ClientModule,
     CatalogModule,
     OrdersModule,
+    OrdersModule,
     StorageModule,
+    SiteModule,
   ],
   controllers: [AppController],
   providers: [AppService],
