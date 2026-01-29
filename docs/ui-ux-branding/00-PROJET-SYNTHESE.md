@@ -18,8 +18,8 @@ Ce projet de spécifications UI/UX représente un travail complet de conception 
 
 | Métrique | Valeur |
 |----------|--------|
-| **Nombre de documents** | 16 documents Markdown |
-| **Nombre total de mots** | 16 081 mots |
+| **Nombre de documents** | 22 documents Markdown |
+| **Nombre total de mots** | 20 000+ mots |
 | **Écrans spécifiés (Web)** | 65 écrans uniques |
 | **Écrans spécifiés (Mobile)** | 16 écrans uniques |
 | **Parcours utilisateurs** | 10 parcours complets |
@@ -37,18 +37,24 @@ Ce projet de spécifications UI/UX représente un travail complet de conception 
 3. **01-user-journeys-map.md** - Cartographie complète des parcours
 4. **02-design-system-branding.md** - Design system et identité visuelle
 5. **03-spec-visual-journey-01-auth.md** - Authentification
-6. **04-spec-visual-journey-02-superadmin.md** - Parcours Superadmin
-7. **05-spec-visual-journey-03-admintenant.md** - Parcours Admin_Tenant
-8. **06-spec-visual-journey-04-adminsite.md** - Parcours Admin_Site
-9. **07-spec-visual-journey-05-usersite-reception.md** - Réception de commandes
-10. **08-spec-visual-journey-06-usersite-processing.md** - Traitement des commandes
-11. **09-spec-visual-journey-07-usersite-storage.md** - Rangement et stockage
-12. **10-spec-visual-journey-08-usersite-delivery.md** - Livraison et retrait
+6. **04-spec-visual-journey-02-superadmin.md** - Parcours Superadmin (Desktop)
+7. **05-spec-visual-journey-03-admintenant.md** - Parcours Admin_Tenant (Desktop)
+8. **06-spec-visual-journey-04-adminsite.md** - Parcours Admin_Site (Desktop)
+9. **07-spec-visual-journey-05-usersite-reception.md** - Réception de commandes (Desktop)
+10. **08-spec-visual-journey-06-usersite-processing.md** - Traitement des commandes (Desktop)
+11. **09-spec-visual-journey-07-usersite-storage.md** - Rangement et stockage (Desktop)
+12. **10-spec-visual-journey-08-usersite-delivery.md** - Livraison et retrait (Desktop)
 13. **11-spec-visual-journey-09-client-mobile.md** - Application mobile client
 14. **12-keycloak-custom-theme-spec.md** - Thème Keycloak personnalisé
-15. **13-spec-visual-journey-10-reports-analytics.md** - Rapports et analytics
+15. **13-spec-visual-journey-10-reports-analytics.md** - Rapports et analytics (Desktop)
 16. **14-thermal-ticket-design-spec.md** - Design du ticket thermique
 17. **15-ui-components-library.md** - Bibliothèque de composants UI
+18. **16-spec-mobile-journey-02-superadmin.md** - Parcours Superadmin (Mobile/Responsive)
+19. **17-spec-mobile-journey-03-admintenant.md** - Parcours Admin_Tenant (Mobile/Responsive)
+20. **18-spec-mobile-journey-04-adminsite.md** - Parcours Admin_Site (Mobile/Responsive)
+21. **19-spec-mobile-journey-05-usersite-reception.md** - Réception de commandes (Mobile/Responsive)
+22. **20-spec-mobile-journeys-usersite-operations.md** - Opérations User_Site (Mobile/Responsive)
+23. **21-responsive-design-guide.md** - Guide de conception responsive mobile-first
 
 ---
 

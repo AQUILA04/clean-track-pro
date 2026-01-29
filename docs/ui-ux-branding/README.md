@@ -23,7 +23,36 @@ Ce dossier contient l'ensemble des spécifications visuelles et de design pour l
 
 ---
 
-### 🎨 Spécifications Visuelles par Parcours
+### 🎨 Spécifications Visuelles par Parcours (Desktop)
+
+#### Parcours Transversaux
+
+| Document | Parcours | Écrans Couverts | Plateforme |
+|----------|----------|-----------------|------------|
+| **03-spec-visual-journey-01-auth.md** | Authentification | AUTH-01 à AUTH-05 | Web + Mobile |
+
+#### Parcours Web (Back-office)
+
+| Document | Rôle | Écrans Couverts | Description |
+|----------|------|-----------------|-------------|
+| **04-spec-visual-journey-02-superadmin.md** | Superadmin | SA-01 à SA-06 | Gestion de la plateforme SaaS et des tenants |
+| **05-spec-visual-journey-03-admintenant.md** | Admin_Tenant | AT-01 à AT-12 | Configuration du réseau d'agences, catalogue et tarifs |
+| **06-spec-visual-journey-04-adminsite.md** | Admin_Site | AS-01 à AS-07 | Gestion opérationnelle d'une agence spécifique |
+| **07-spec-visual-journey-05-usersite-reception.md** | User_Site | US-01 à US-09 | Interface "Fast-Scan" de réception de commandes |
+| **08-spec-visual-journey-06-usersite-processing.md** | User_Site | UT-01 à UT-07 | Suivi et traitement des commandes |
+| **09-spec-visual-journey-07-usersite-storage.md** | User_Site | UR-01 à UR-06 | Rangement et stockage des commandes prêtes |
+| **10-spec-visual-journey-08-usersite-delivery.md** | User_Site | UL-01 à UL-06 | Livraison et retrait client |
+| **13-spec-visual-journey-10-reports-analytics.md** | Admin_Tenant | RA-01 à RA-07 | Rapports et analytics |
+
+### 📱 Spécifications Visuelles par Parcours (Mobile/Responsive)
+
+| Document | Rôle | Description |
+|----------|------|-------------|
+| **16-spec-mobile-journey-02-superadmin.md** | Superadmin | Adaptation responsive du parcours Superadmin |
+| **17-spec-mobile-journey-03-admintenant.md** | Admin_Tenant | Adaptation responsive du parcours Admin_Tenant |
+| **18-spec-mobile-journey-04-adminsite.md** | Admin_Site | Adaptation responsive du parcours Admin_Site |
+| **19-spec-mobile-journey-05-usersite-reception.md** | User_Site | Adaptation responsive de l'interface "Fast-Scan" |
+| **20-spec-mobile-journeys-usersite-operations.md** | User_Site | Adaptation responsive des parcours opérationnels (Traitement, Rangement, Livraison) |
 
 #### Parcours Transversaux
 
@@ -58,6 +87,7 @@ Ce dossier contient l'ensemble des spécifications visuelles et de design pour l
 |----------|-------------|--------|
 | **12-keycloak-custom-theme-spec.md** | Spécifications complètes pour la personnalisation du thème Keycloak (connexion, mot de passe oublié, etc.) | ✅ Complet |
 | **14-thermal-ticket-design-spec.md** | Design détaillé du ticket thermique 80mm avec QR code géant | ✅ Complet |
+| **21-responsive-design-guide.md** | Principes et patrons de conception pour une approche mobile-first | ✅ Complet |
 
 ---
 
