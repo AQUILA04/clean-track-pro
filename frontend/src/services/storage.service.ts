@@ -65,5 +65,30 @@ export const StorageService = {
             const error = await response.json();
             throw new Error(error.message || 'Failed to assign order');
         }
+    },
+
+    lookupOrder: async (orderId: string): Promise<any> => {
+        const response = await fetch(`${API_URL}/storage/lookup/${orderId}`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to lookup order');
+        }
+        const res = await response.json();
+        return res.data || res;
+    },
+
+    deliverOrder: async (orderId: string): Promise<void> => {
+        const response = await fetch(`${API_URL}/storage/deliver/${orderId}`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to complete delivery');
+        }
     }
+
 };

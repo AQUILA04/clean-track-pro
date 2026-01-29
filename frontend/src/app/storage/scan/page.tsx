@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { StorageService, StorageSlot, StorageSlotStatus } from '../../../services/storage.service';
 import { OrdersService } from '../../../services/orders.service';
 import { useToast } from '../../../components/ui/simple-toast';
+import { ScannerInput, ScannerInputHandle } from '../../../components/shared/ScannerInput';
 
 export default function StorageScannerPage() {
     const { data: session } = useSession();
@@ -19,8 +20,8 @@ export default function StorageScannerPage() {
     const [initializing, setInitializing] = useState(true);
 
     // Refs
-    const orderInputRef = useRef<HTMLInputElement>(null);
-    const slotInputRef = useRef<HTMLInputElement>(null);
+    const orderInputRef = useRef<ScannerInputHandle>(null);
+    const slotInputRef = useRef<ScannerInputHandle>(null);
 
     // Load Slots on Mount
     useEffect(() => {
@@ -50,8 +51,7 @@ export default function StorageScannerPage() {
     }, [session, toast]);
 
     // Handle Order Scan (Enter Key)
-    const handleOrderSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleOrderSubmit = async () => {
         if (!orderInput.trim()) return;
 
         setLoading(true);
@@ -95,8 +95,7 @@ export default function StorageScannerPage() {
     };
 
     // Handle Slot Scan (Enter Key)
-    const handleSlotSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSlotSubmit = async () => {
         if (!slotInput.trim() || !scannedOrder) return;
 
         setLoading(true);
@@ -159,21 +158,16 @@ export default function StorageScannerPage() {
 
                     {/* Order Scanner */}
                     <div className={`p-6 rounded-xl border-2 transition-colors ${!scannedOrder ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            1. Scan Order Ticket
-                        </label>
-                        <form onSubmit={handleOrderSubmit}>
-                            <input
-                                ref={orderInputRef}
-                                type="text"
-                                value={orderInput}
-                                onChange={(e) => setOrderInput(e.target.value)}
-                                disabled={!!scannedOrder || loading}
-                                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg shadow-sm"
-                                placeholder="Scan Order QR / ID..."
-                                autoFocus
-                            />
-                        </form>
+                        <ScannerInput
+                            ref={orderInputRef}
+                            label="1. Scan Order Ticket"
+                            value={orderInput}
+                            onChange={(e) => setOrderInput(e.target.value)}
+                            disabled={!!scannedOrder || loading}
+                            placeholder="Scan Order QR / ID..."
+                            autoFocus={true}
+                            onScan={handleOrderSubmit}
+                        />
                         {scannedOrder && (
                             <button
                                 onClick={() => {
@@ -191,20 +185,16 @@ export default function StorageScannerPage() {
 
                     {/* Slot Scanner */}
                     <div className={`p-6 rounded-xl border-2 transition-colors ${scannedOrder ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-gray-50 opacity-70'}`}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            2. Scan Shelf Slot
-                        </label>
-                        <form onSubmit={handleSlotSubmit}>
-                            <input
-                                ref={slotInputRef}
-                                type="text"
-                                value={slotInput}
-                                onChange={(e) => setSlotInput(e.target.value)}
-                                disabled={!scannedOrder || loading}
-                                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-lg shadow-sm"
-                                placeholder={scannedOrder ? "Scan Slot Label (e.g. A-01)..." : "Scan Order First"}
-                            />
-                        </form>
+                        <ScannerInput
+                            ref={slotInputRef}
+                            label="2. Scan Shelf Slot"
+                            value={slotInput}
+                            onChange={(e) => setSlotInput(e.target.value)}
+                            disabled={!scannedOrder || loading}
+                            placeholder={scannedOrder ? "Scan Slot Label (e.g. A-01)..." : "Scan Order First"}
+                            inputClassName="focus:ring-purple-500 focus:border-purple-500"
+                            onScan={handleSlotSubmit}
+                        />
                     </div>
 
                 </div>
@@ -264,3 +254,4 @@ export default function StorageScannerPage() {
         </div>
     );
 }
+

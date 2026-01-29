@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, HttpCode, HttpStatus, Param, ParseUUIDPipe } from '@nestjs/common';
 import { StorageService } from './storage.service';
 import { CreateStorageSlotDto } from './dto/create-storage-slot.dto';
 import { AssignOrderDto } from './dto/assign-order.dto';
@@ -28,4 +28,18 @@ export class StorageController {
     assign(@Body() assignOrderDto: AssignOrderDto) {
         return this.storageService.assignOrderToSlot(assignOrderDto);
     }
+
+    @Get('lookup/:orderId')
+    @Roles({ roles: ['realm:Admin_Site', 'realm:User_Site', 'realm:Super_Admin'] })
+    lookup(@Param('orderId', ParseUUIDPipe) orderId: string) {
+        return this.storageService.lookupOrder(orderId);
+    }
+
+    @Post('deliver/:orderId')
+    @Roles({ roles: ['realm:Admin_Site', 'realm:User_Site', 'realm:Super_Admin'] })
+    @HttpCode(HttpStatus.OK)
+    deliver(@Param('orderId', ParseUUIDPipe) orderId: string) {
+        return this.storageService.processDelivery(orderId);
+    }
+
 }
