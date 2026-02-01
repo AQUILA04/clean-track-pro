@@ -1,6 +1,7 @@
 import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, IsDateString, ValidateNested, ArrayMinSize, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ServiceLevel, OrderStatus } from '../entities/order.entity';
+import { ServiceLevel } from '../entities/order.entity';
+import { OrderStatus } from '../enums/order-status.enum';
 
 export class CreateOrderItemDto {
     @IsNotEmpty()

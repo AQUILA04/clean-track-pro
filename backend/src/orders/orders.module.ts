@@ -6,12 +6,14 @@ import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { TenantModule } from '../tenant/tenant.module';
 import { CatalogModule } from '../catalog/catalog.module';
+import { KeycloakModule } from '../shared/keycloak/keycloak.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Order, OrderItem]),
         TenantModule,
-        CatalogModule
+        CatalogModule,
+        KeycloakModule,
     ],
     controllers: [OrdersController],
     providers: [OrdersService],
