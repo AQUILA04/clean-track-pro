@@ -43,3 +43,29 @@ CREATE TABLE order_storage (
   stored_at TIMESTAMP DEFAULT NOW(),
   PRIMARY KEY (order_id, shelf_slot_id)
 );
+
+CREATE TABLE audit_logs (
+  id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL,
+  user_id UUID,
+  action VARCHAR(50), -- CREATE, UPDATE, DELETE
+  resource VARCHAR(50), -- Order, Client, etc.
+  resource_id UUID,
+  payload JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE subscription_plans (
+  id UUID PRIMARY KEY,
+  name VARCHAR(50), -- Starter, Pro, Enterprise
+  price DECIMAL(10,2),
+  max_sites INT,
+  features JSONB
+);
+
+CREATE TABLE tenant_subscriptions (
+  tenant_id UUID PRIMARY KEY,
+  plan_id UUID REFERENCES subscription_plans(id),
+  status VARCHAR(20), -- ACTIVE, PAST_DUE
+  current_period_end TIMESTAMP
+);

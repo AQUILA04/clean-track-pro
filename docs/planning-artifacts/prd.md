@@ -37,3 +37,20 @@
 ## 6. Impression Thermique
 * **Ticket Client :** QR Code unique pour retrait, liste des articles, date de remise promise.
 * **Étiquettes :** Petits coupons avec QR code liés à l'item de commande.
+
+## 7. Système d'Identité Visuelle
+* **Design System :** "Blue Trust" (#1A5AD7) comme couleur primaire.
+* **Typographie :** Inter font family.
+* **Composants :** Badge, Card, Button standardisés avec sémantique (Express=Orange/Red, Slot Free=Green, Slot Occupied=Grey).
+* **Responsive :** Sidebar et Layout adaptatif (Mobile/Desktop).
+
+## 8. Audit & Sécurité
+* **Logging :** Traçabilité automatique de toutes les opérations d'écriture (Create, Update, Delete).
+* **Données :** Qui (User ID), Quoi (Endpoint), Quand (Timestamp), Détails (Payload).
+* **Consultation :** Interface Superadmin pour filtrer et visualiser les logs.
+
+## 9. Gestion des Abonnements SaaS
+* **Plans :** Définition des niveaux de service (ex: Starter, Pro, Enterprise).
+* **Limites :** Quotas par plan (ex: Nombre de sites, Volume de commandes).
+* **Facturation :** Cycle Mensuel/Annuel.
+* **Enforcement :** Blocage des actions dépassant les quotas (ex: Ajout d'un 2ème site pour plan Starter).

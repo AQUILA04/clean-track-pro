@@ -392,3 +392,91 @@ So that the transaction is closed securely.
 **Then** The system displays the Order details and its Shelf Slot ID
 **And** I can click "Confirm Delivery" to mark it as `DELIVERED`
 **And** The Shelf Slot status reverts to `FREE`
+
+## Epic 8: Visual Identity System
+
+Refactoring the entire UI to match the "Blue Trust" Premium Specs (#1A5AD7), ensuring a responsive, modern, and consistent experience across all roles.
+
+### Story 8.1: Design System Implementation
+
+As a Developer,
+I want to implement the new "Blue Trust" Design System (Tokens, Typography, Colors) in Tailwind,
+So that all future components inherit the correct styling automatically.
+
+**Acceptance Criteria:**
+
+**Given** The UI Specs (02-design-system-branding.md)
+**When** I configure `tailwind.config.ts` and global CSS
+**Then** Colors `primary-500` matches `#1A5AD7`
+**And** Typography uses `Inter` font family
+**And** I can use global utility classes for "Card", "Button", "Badge"
+
+### Story 8.2: Shell & Navigation Refactor
+
+As a User,
+I want a responsive Sidebar and Layout that matches the new design,
+So that I can navigate the application intuitively on any device.
+
+**Acceptance Criteria:**
+
+**Given** The Spec `06-spec-visual-journey-04-adminsite.md`
+**When** I log in
+**Then** I see the new Sidebar with correct icons and active states
+**And** The layout responds to mobile (collapsible drawer)
+
+## Epic 9: Audit & Security Logging
+
+Comprehensive tracking of all system actions for compliance, security, and dispute resolution.
+
+### Story 9.1: Audit Logging Backend
+
+As a Superadmin,
+I want the system to automatically record every write operation,
+So that we have a secure trail of "Who did What".
+
+**Acceptance Criteria:**
+
+**Given** Any API request to create/update/delete data
+**When** The request is processed
+**Then** An `AuditLog` entry is created (User ID, Endpoint, Payload, Timestamp)
+**And** Read operations are NOT logged unless critical
+
+### Story 9.2: Superadmin Audit View
+
+As a Superadmin,
+I want to view the global Audit Log,
+So that I can investigate issues.
+
+**Acceptance Criteria:**
+
+**Given** The Audit Page
+**When** I search for a user or resource ID
+**Then** I see a chronological list of actions
+
+## Epic 10: SaaS Subscription Engine
+
+Monetization infrastructure for multi-tenant billing, plan management, and access control.
+
+### Story 10.1: Subscription Plan Configuration
+
+As a Superadmin,
+I want to define Subscription Plans (e.g. "Starter", "Pro", "Enterprise"),
+So that I can sell different tiers of service.
+
+**Acceptance Criteria:**
+
+**Given** The Plan Management Interface
+**When** I create a plan
+**Then** I can define Name, Price, Billing Interval (Monthly/Yearly), and Max Sites
+
+### Story 10.2: Tenant Subscription Enforcement
+
+As a System,
+I want to enforce plan limits (e.g. Max Sites),
+So that tenants pay for what they use.
+
+**Acceptance Criteria:**
+
+**Given** A Tenant on "Starter" plan (Max 1 Site)
+**When** They try to add a 2nd Site
+**Then** The system blocks the action and prompts to Upgrade
