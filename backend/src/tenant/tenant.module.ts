@@ -12,5 +12,6 @@ import { KeycloakModule } from '../shared/keycloak/keycloak.module';
     ],
     controllers: [TenantController],
     providers: [TenantService],
+    exports: [TenantService],
 })
 export class TenantModule { }

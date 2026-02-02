@@ -1,0 +1,31 @@
+{
+  "name": "clean-track-pro",
+  "version": "1.0.0",
+  "description": "Application SaaS multi-tenant pour la gestion de pressing avec suivi en temps réel.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AQUILA04/clean-track-pro.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AQUILA04/clean-track-pro/issues"
+  },
+  "homepage": "https://github.com/AQUILA04/clean-track-pro#readme",
+  "dependencies": {
+    "@keycloak/keycloak-admin-client": "^26.5.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0"
+  }
+}

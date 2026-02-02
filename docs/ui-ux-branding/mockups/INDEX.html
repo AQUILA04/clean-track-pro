@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CleanTrack Pro - Index des Maquettes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #F0F5FF 0%, #FFFFFF 100%);
+            color: #1F2937;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1A5AD7;
+            margin-bottom: 16px;
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            color: #6B7280;
+            margin-bottom: 8px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            background: white;
+            padding: 16px 32px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1A5AD7;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #6B7280;
+            margin-top: 4px;
+        }
+        
+        .section {
+            margin-bottom: 60px;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid #1A5AD7;
+        }
+        
+        .section-icon {
+            font-size: 32px;
+            margin-right: 16px;
+        }
+        
+        .section-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1F2937;
+        }
+        
+        .section-count {
+            margin-left: auto;
+            background: #1A5AD7;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 8px 24px rgba(26, 90, 215, 0.2);
+        }
+        
+        .card-image {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            background: #F0F5FF;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        
+        .card-content {
+            padding: 20px;
+        }
+        
+        .card-id {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1A5AD7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 8px;
+        }
+        
+        .card-description {
+            font-size: 14px;
+            color: #6B7280;
+            line-height: 1.5;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+        
+        .badge-web {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+        
+        .badge-mobile {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+        
+        .badge-critical {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 2px solid #E5E7EB;
+            color: #6B7280;
+        }
+        
+        .footer-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CleanTrack Pro</h1>
+            <p class="subtitle">Collection Complète des Maquettes UI/UX</p>
+            <p class="subtitle">Par Francis AHONSU - 29 janvier 2026</p>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">42</div>
+                    <div class="stat-label">Écrans Générés</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">10</div>
+                    <div class="stat-label">Parcours Utilisateurs</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">Rôles Couverts</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Authentification -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">🔐</span>
+                <h2 class="section-title">Authentification</h2>
+                <span class="section-count">2 écrans</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('AUTH-01-page-connexion.png', '_blank')">
+                    <img src="AUTH-01-page-connexion.png" alt="Page de connexion" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AUTH-01</div>
+                        <div class="card-title">Page de Connexion</div>
+                        <div class="card-description">Interface Keycloak personnalisée avec carte centrée sur fond dégradé bleu</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('AUTH-02-mot-de-passe-oublie.png', '_blank')">
+                    <img src="AUTH-02-mot-de-passe-oublie.png" alt="Mot de passe oublié" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AUTH-02</div>
+                        <div class="card-title">Mot de Passe Oublié</div>
+                        <div class="card-description">Formulaire simple pour réinitialisation par email</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Superadmin -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">👨‍💼</span>
+                <h2 class="section-title">Superadmin - Gestion Plateforme</h2>
+                <span class="section-count">3 écrans</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('SA-01-dashboard-superadmin.png', '_blank')">
+                    <img src="SA-01-dashboard-superadmin.png" alt="Dashboard Superadmin" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">SA-01</div>
+                        <div class="card-title">Dashboard Superadmin</div>
+                        <div class="card-description">KPIs en cartes, graphique d'évolution, liste des derniers tenants</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('SA-02-liste-tenants.png', '_blank')">
+                    <img src="SA-02-liste-tenants.png" alt="Liste des Tenants" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">SA-02</div>
+                        <div class="card-title">Liste des Tenants</div>
+                        <div class="card-description">Tableau complet avec recherche, filtres et statuts colorés</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('SA-03-creation-tenant-modal.png', '_blank')">
+                    <img src="SA-03-creation-tenant-modal.png" alt="Création Tenant" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">SA-03</div>
+                        <div class="card-title">Création de Tenant</div>
+                        <div class="card-description">Modale de formulaire pour onboarding nouveau client SaaS</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Tenant -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">🏢</span>
+                <h2 class="section-title">Admin Tenant - Configuration Pressing</h2>
+                <span class="section-count">4 écrans</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('AT-01-dashboard-admin-tenant.png', '_blank')">
+                    <img src="AT-01-dashboard-admin-tenant.png" alt="Dashboard Admin Tenant" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AT-01</div>
+                        <div class="card-title">Dashboard Admin Tenant</div>
+                        <div class="card-description">Vue multi-sites avec KPIs globaux, graphiques performance par agence</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('AT-02-gestion-agences.png', '_blank')">
+                    <img src="AT-02-gestion-agences.png" alt="Gestion des Agences" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AT-02</div>
+                        <div class="card-title">Gestion des Agences</div>
+                        <div class="card-description">Grille de cartes d'agences avec KPIs individuels</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('AT-03-creation-agence-form.png', '_blank')">
+                    <img src="AT-03-creation-agence-form.png" alt="Création Agence" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AT-03</div>
+                        <div class="card-title">Création d'Agence</div>
+                        <div class="card-description">Formulaire complet avec sections (infos, branding, configuration)</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('AT-07-configuration-articles.png', '_blank')">
+                    <img src="AT-07-configuration-articles.png" alt="Configuration Articles" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AT-07</div>
+                        <div class="card-title">Configuration Articles</div>
+                        <div class="card-description">Grille visuelle des types d'articles avec icônes cliquables</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('AT-10-grille-tarifaire.png', '_blank')">
+                    <img src="AT-10-grille-tarifaire.png" alt="Grille Tarifaire" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AT-10</div>
+                        <div class="card-title">Grille Tarifaire</div>
+                        <div class="card-description">Matrice prix (Articles × Services) avec champs éditables</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Site -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">🏪</span>
+                <h2 class="section-title">Admin Site - Gestion Agence</h2>
+                <span class="section-count">3 écrans</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('AS-01-dashboard-admin-site.png', '_blank')">
+                    <img src="AS-01-dashboard-admin-site.png" alt="Dashboard Admin Site" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AS-01</div>
+                        <div class="card-title">Dashboard Admin Site</div>
+                        <div class="card-description">KPIs opérationnels d'une agence spécifique</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('AS-02-gestion-rayons.png', '_blank')">
+                    <img src="AS-02-gestion-rayons.png" alt="Gestion Rayons" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AS-02</div>
+                        <div class="card-title">Gestion des Rayons</div>
+                        <div class="card-description">Grille visuelle 10×6 des emplacements de stockage avec statuts colorés</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('AS-05-carte-thermique-occupation.png', '_blank')">
+                    <img src="AS-05-carte-thermique-occupation.png" alt="Carte Thermique" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">AS-05</div>
+                        <div class="card-title">Carte Thermique Occupation</div>
+                        <div class="card-description">Heat map par durée d'occupation avec dégradé de couleurs</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Site - Réception -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">🎯</span>
+                <h2 class="section-title">User Site - Réception Commande</h2>
+                <span class="section-count">8 écrans</span>
+                <span class="badge badge-critical" style="margin-left: 12px;">CRITIQUE</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('US-01-interface-fast-scan.png', '_blank')">
+                    <img src="US-01-interface-fast-scan.png" alt="Interface Fast-Scan" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">US-01</div>
+                        <div class="card-title">Interface Fast-Scan</div>
+                        <div class="card-description">Layout 3 colonnes (Client/Catalogue/Panier) optimisé pour vitesse</div>
+                        <span class="badge badge-web">Web</span>
+                        <span class="badge badge-critical">Critique</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('US-02-omnibox-recherche-client.png', '_blank')">
+                    <img src="US-02-omnibox-recherche-client.png" alt="Omnibox" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">US-02</div>
+                        <div class="card-title">Omnibox Recherche Client</div>
+                        <div class="card-description">Barre de recherche temps réel avec résultats déroulants</div>
+                        <span class="badge badge-web">Web</span>
+                        <span class="badge badge-critical">Critique</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('US-03-creation-client-rapide-modal.png', '_blank')">
+                    <img src="US-03-creation-client-rapide-modal.png" alt="Création Client" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">US-03</div>
+                        <div class="card-title">Création Client Rapide</div>
+                        <div class="card-description">Modale minimaliste (nom + téléphone)</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('US-04-grille-selection-articles.png', '_blank')">
+                    <img src="US-04-grille-selection-articles.png" alt="Sélection Articles" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">US-04</div>
+                        <div class="card-title">Grille Sélection Articles</div>
+                        <div class="card-description">Grille 4×3 d'icônes cliquables avec badges quantité</div>
+                        <span class="badge badge-web">Web</span>
+                        <span class="badge badge-critical">Critique</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('US-05-panier-resume-commande.png', '_blank')">
+                    <img src="US-05-panier-resume-commande.png" alt="Panier" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">US-05</div>
+                        <div class="card-title">Panier Résumé Commande</div>
+                        <div class="card-description">Liste d'articles avec sélecteurs quantité, services, prix dynamiques</div>
+                        <span class="badge badge-web">Web</span>
+                        <span class="badge badge-critical">Critique</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('US-06-toggle-mode-express.png', '_blank')">
+                    <img src="US-06-toggle-mode-express.png" alt="Toggle Express" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">US-06</div>
+                        <div class="card-title">Toggle Mode Express</div>
+                        <div class="card-description">Comparaison OFF/ON avec impact visuel orange</div>
+                        <span class="badge badge-web">Web</span>
+                        <span class="badge badge-critical">Critique</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('US-07-validation-commande-modal.png', '_blank')">
+                    <img src="US-07-validation-commande-modal.png" alt="Validation" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">US-07</div>
+                        <div class="card-title">Validation Commande</div>
+                        <div class="card-description">Modale de confirmation avec récapitulatif complet</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('US-08-apercu-ticket-thermique.png', '_blank')">
+                    <img src="US-08-apercu-ticket-thermique.png" alt="Ticket Thermique" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">US-08</div>
+                        <div class="card-title">Aperçu Ticket Thermique</div>
+                        <div class="card-description">Simulation ticket thermique 80mm avec QR code géant</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Site - Traitement -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">📋</span>
+                <h2 class="section-title">User Site - Traitement Commandes</h2>
+                <span class="section-count">4 écrans</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('UT-01-liste-commandes.png', '_blank')">
+                    <img src="UT-01-liste-commandes.png" alt="Liste Commandes" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UT-01</div>
+                        <div class="card-title">Liste des Commandes</div>
+                        <div class="card-description">Tableau filtrable avec badges de statut colorés</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('UT-02-details-commande.png', '_blank')">
+                    <img src="UT-02-details-commande.png" alt="Détails Commande" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UT-02</div>
+                        <div class="card-title">Détails Commande</div>
+                        <div class="card-description">Vue complète avec timeline historique verticale</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('UT-03-scan-qr-interface.png', '_blank')">
+                    <img src="UT-03-scan-qr-interface.png" alt="Scan QR" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UT-03</div>
+                        <div class="card-title">Scan QR Code</div>
+                        <div class="card-description">Interface de scan avec frame animé et input manuel alternatif</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('UT-05-vue-kanban-commandes.png', '_blank')">
+                    <img src="UT-05-vue-kanban-commandes.png" alt="Vue Kanban" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UT-05</div>
+                        <div class="card-title">Vue Kanban</div>
+                        <div class="card-description">Board 4 colonnes drag-and-drop par statut</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Site - Rangement -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">📦</span>
+                <h2 class="section-title">User Site - Rangement et Stockage</h2>
+                <span class="section-count">3 écrans</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('UR-01-commandes-a-ranger.png', '_blank')">
+                    <img src="UR-01-commandes-a-ranger.png" alt="Commandes à Ranger" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UR-01</div>
+                        <div class="card-title">Commandes à Ranger</div>
+                        <div class="card-description">Cartes de commandes prêtes avec indicateurs d'urgence</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('UR-02-selection-rayon-modal.png', '_blank')">
+                    <img src="UR-02-selection-rayon-modal.png" alt="Sélection Rayon" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UR-02</div>
+                        <div class="card-title">Sélection Rayon</div>
+                        <div class="card-description">Modale avec grille interactive de slots disponibles</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('UR-03-scan-rangement.png', '_blank')">
+                    <img src="UR-03-scan-rangement.png" alt="Scan Rangement" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UR-03</div>
+                        <div class="card-title">Scan Rangement</div>
+                        <div class="card-description">Interface scan + liste d'attente avec urgence colorée</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Site - Livraison -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">🚚</span>
+                <h2 class="section-title">User Site - Livraison et Retrait</h2>
+                <span class="section-count">4 écrans</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('UL-01-scan-qr-retrait.png', '_blank')">
+                    <img src="UL-01-scan-qr-retrait.png" alt="Scan QR Retrait" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UL-01</div>
+                        <div class="card-title">Scan QR Retrait</div>
+                        <div class="card-description">Interface scan QR client avec historique récent</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('UL-02-details-retrait-commande.png', '_blank')">
+                    <img src="UL-02-details-retrait-commande.png" alt="Détails Retrait" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UL-02</div>
+                        <div class="card-title">Détails Retrait</div>
+                        <div class="card-description">Infos complètes avec localisation rayon et checklist</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('UL-04-paiement-interface.png', '_blank')">
+                    <img src="UL-04-paiement-interface.png" alt="Paiement" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UL-04</div>
+                        <div class="card-title">Interface Paiement</div>
+                        <div class="card-description">Sélection mode paiement avec calculateur monnaie</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('UL-05-confirmation-livraison.png', '_blank')">
+                    <img src="UL-05-confirmation-livraison.png" alt="Confirmation" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">UL-05</div>
+                        <div class="card-title">Confirmation Livraison</div>
+                        <div class="card-description">Page succès avec reçu et signature client</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Client Mobile -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">📱</span>
+                <h2 class="section-title">Client Mobile</h2>
+                <span class="section-count">9 écrans</span>
+                <span class="badge badge-critical" style="margin-left: 12px;">CRITIQUE</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('CL-01-accueil-mobile.png', '_blank')">
+                    <img src="CL-01-accueil-mobile.png" alt="Accueil Mobile" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">CL-01</div>
+                        <div class="card-title">Accueil Mobile</div>
+                        <div class="card-description">Onboarding avec logo, illustration et boutons connexion/inscription</div>
+                        <span class="badge badge-mobile">Mobile</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('CL-02-connexion-mobile.png', '_blank')">
+                    <img src="CL-02-connexion-mobile.png" alt="Connexion Mobile" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">CL-02</div>
+                        <div class="card-title">Connexion Mobile</div>
+                        <div class="card-description">Formulaire login avec option passwordless (code SMS)</div>
+                        <span class="badge badge-mobile">Mobile</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('CL-04-dashboard-client-mobile.png', '_blank')">
+                    <img src="CL-04-dashboard-client-mobile.png" alt="Dashboard Client" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">CL-04</div>
+                        <div class="card-title">Dashboard Client</div>
+                        <div class="card-description">Cartes de commandes avec progress bars et statuts</div>
+                        <span class="badge badge-mobile">Mobile</span>
+                        <span class="badge badge-critical">Critique</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('CL-05-mon-code-qr-client.png', '_blank')">
+                    <img src="CL-05-mon-code-qr-client.png" alt="QR Code" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">CL-05</div>
+                        <div class="card-title">QR Code Client</div>
+                        <div class="card-description">Grand QR code centré pour identification rapide</div>
+                        <span class="badge badge-mobile">Mobile</span>
+                        <span class="badge badge-critical">Critique</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('CL-06-liste-commandes-mobile.png', '_blank')">
+                    <img src="CL-06-liste-commandes-mobile.png" alt="Liste Commandes" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">CL-06</div>
+                        <div class="card-title">Liste Commandes Mobile</div>
+                        <div class="card-description">Onglets "En cours" / "Historique" avec cartes détaillées</div>
+                        <span class="badge badge-mobile">Mobile</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('CL-07-details-commande-mobile.png', '_blank')">
+                    <img src="CL-07-details-commande-mobile.png" alt="Détails Commande" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">CL-07</div>
+                        <div class="card-title">Détails Commande Mobile</div>
+                        <div class="card-description">Infos complètes avec articles, prix, agence</div>
+                        <span class="badge badge-mobile">Mobile</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('CL-08-suivi-temps-reel-timeline.png', '_blank')">
+                    <img src="CL-08-suivi-temps-reel-timeline.png" alt="Timeline" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">CL-08</div>
+                        <div class="card-title">Timeline Suivi Temps Réel</div>
+                        <div class="card-description">Timeline verticale avec nodes colorés et étape actuelle pulsante</div>
+                        <span class="badge badge-mobile">Mobile</span>
+                        <span class="badge badge-critical">Critique</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('CL-09-notifications-mobile.png', '_blank')">
+                    <img src="CL-09-notifications-mobile.png" alt="Notifications" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">CL-09</div>
+                        <div class="card-title">Notifications Mobile</div>
+                        <div class="card-description">Centre de notifications avec indicateurs non-lus</div>
+                        <span class="badge badge-mobile">Mobile</span>
+                    </div>
+                </div>
+                <div class="card" onclick="window.open('CL-10-profil-client-mobile.png', '_blank')">
+                    <img src="CL-10-profil-client-mobile.png" alt="Profil" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">CL-10</div>
+                        <div class="card-title">Profil Client Mobile</div>
+                        <div class="card-description">Paramètres groupés (infos, préférences, sécurité, support)</div>
+                        <span class="badge badge-mobile">Mobile</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics -->
+        <section class="section">
+            <div class="section-header">
+                <span class="section-icon">📊</span>
+                <h2 class="section-title">Analytics et Rapports</h2>
+                <span class="section-count">1 écran</span>
+            </div>
+            <div class="grid">
+                <div class="card" onclick="window.open('RA-01-dashboard-analytics.png', '_blank')">
+                    <img src="RA-01-dashboard-analytics.png" alt="Dashboard Analytics" class="card-image">
+                    <div class="card-content">
+                        <div class="card-id">RA-01</div>
+                        <div class="card-title">Dashboard Analytics</div>
+                        <div class="card-description">KPIs avec sparklines, graphiques CA, répartition services, performance agences</div>
+                        <span class="badge badge-web">Web</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p class="footer-title">CleanTrack Pro - Collection de Maquettes UI/UX</p>
+            <p>Conception et Génération : Francis AHONSU</p>
+            <p>29 janvier 2026</p>
+            <p style="margin-top: 16px;">© 2026 Francis AHONSU - Tous droits réservés</p>
+        </footer>
+    </div>
+</body>
+</html>

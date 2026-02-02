@@ -9,9 +9,13 @@ import { ServiceDefinitionController } from './controllers/service-definition.co
 import { PricingController } from './controllers/pricing.controller';
 import { ServiceDefinitionService } from './services/service-definition.service';
 import { PricingService } from './services/pricing.service';
+import { KeycloakModule } from '../shared/keycloak/keycloak.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([ArticleType, ServiceDefinition, ServicePrice])],
+    imports: [
+        TypeOrmModule.forFeature([ArticleType, ServiceDefinition, ServicePrice]),
+        KeycloakModule,
+    ],
     controllers: [CatalogController, ServiceDefinitionController, PricingController],
     providers: [CatalogService, ServiceDefinitionService, PricingService],
     exports: [CatalogService, ServiceDefinitionService, PricingService],
