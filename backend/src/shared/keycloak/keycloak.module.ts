@@ -31,7 +31,9 @@ import { KeycloakService } from './keycloak.service';
                     clientId,
                     secret,
                     policyEnforcement: PolicyEnforcementMode.PERMISSIVE,
-                    tokenValidation: TokenValidation.ONLINE,
+                    tokenValidation: TokenValidation.OFFLINE,
+                    logLevels: ['verbose', 'debug', 'log', 'warn', 'error'],
+                    useNestLogger: true,
                 };
             },
             inject: [ConfigService],

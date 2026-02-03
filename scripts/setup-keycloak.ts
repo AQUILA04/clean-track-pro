@@ -64,8 +64,23 @@ async function setupKeycloak() {
         let clientUuid: string;
 
         if (clients.length > 0) {
-            console.log(`ℹ️  Client '${CLIENT_ID}' already exists`);
+            console.log(`ℹ️  Client '${CLIENT_ID}' already exists, updating configuration...`);
             clientUuid = clients[0].id!;
+
+            // Update existing client to ensure redirects are correct
+            await kcAdminClient.clients.update({ id: clientUuid }, {
+                redirectUris: [
+                    'http://localhost:3000/*',
+                    'http://localhost:3000/api/auth/callback/keycloak',
+                    'http://localhost:3001/*',
+                    'http://localhost:3001/api/auth/callback/keycloak',
+                ],
+                webOrigins: ['http://localhost:3000', 'http://localhost:3001'],
+                standardFlowEnabled: true,
+                directAccessGrantsEnabled: true,
+                serviceAccountsEnabled: true,
+            });
+            console.log(`✅ Updated client '${CLIENT_ID}' configuration`);
         } else {
             const client = await kcAdminClient.clients.create({
                 clientId: CLIENT_ID,
@@ -77,71 +92,102 @@ async function setupKeycloak() {
                 redirectUris: [
                     'http://localhost:3000/*',
                     'http://localhost:3000/api/auth/callback/keycloak',
+                    'http://localhost:3001/*',
+                    'http://localhost:3001/api/auth/callback/keycloak',
                 ],
-                webOrigins: ['http://localhost:3000'],
+                webOrigins: ['http://localhost:3000', 'http://localhost:3001'],
                 protocol: 'openid-connect',
             });
             clientUuid = client.id;
             console.log(`✅ Created client '${CLIENT_ID}'`);
         }
 
-        // Create protocol mappers for tenant_id and site_ids
+        // Create or Update protocol mappers
         const mappers = await kcAdminClient.clients.listProtocolMappers({
             id: clientUuid,
         });
 
-        const tenantIdMapper = mappers.find((m: any) => m.name === 'tenant_id');
-        if (!tenantIdMapper) {
-            await kcAdminClient.clients.addProtocolMapper(
-                { id: clientUuid },
-                {
-                    name: 'tenant_id',
-                    protocol: 'openid-connect',
-                    protocolMapper: 'oidc-usermodel-attribute-mapper',
-                    config: {
-                        'user.attribute': 'tenant_id',
-                        'claim.name': 'tenant_id',
-                        'jsonType.label': 'String',
-                        'id.token.claim': 'true',
-                        'access.token.claim': 'true',
-                        'userinfo.token.claim': 'true',
-                    },
-                }
-            );
-            console.log('✅ Created tenant_id mapper');
+        const mappersToSync = [
+            {
+                name: 'tenant_id',
+                protocol: 'openid-connect',
+                protocolMapper: 'oidc-usermodel-attribute-mapper',
+                config: {
+                    'user.attribute': 'tenant_id',
+                    'claim.name': 'tenant_id',
+                    'jsonType.label': 'String',
+                    'id.token.claim': 'true',
+                    'access.token.claim': 'true',
+                    'userinfo.token.claim': 'true',
+                    'aggregate.attrs': 'true'
+                },
+            },
+            {
+                name: 'site_ids',
+                protocol: 'openid-connect',
+                protocolMapper: 'oidc-usermodel-attribute-mapper',
+                config: {
+                    'user.attribute': 'site_ids',
+                    'claim.name': 'site_ids',
+                    'jsonType.label': 'String',
+                    'id.token.claim': 'true',
+                    'access.token.claim': 'true',
+                    'userinfo.token.claim': 'true',
+                    'multivalued': 'true',
+                },
+            },
+            {
+                name: 'audience-mapper',
+                protocol: 'openid-connect',
+                protocolMapper: 'oidc-audience-mapper',
+                config: {
+                    'included.client.audience': CLIENT_ID,
+                    'id.token.claim': 'true',
+                    'access.token.claim': 'true',
+                },
+            }
+        ];
+
+        for (const mapperConfig of mappersToSync) {
+            const existingMapper = mappers.find((m: any) => m.name === mapperConfig.name);
+            if (existingMapper) {
+                console.log(`ℹ️ Updating existing mapper: ${mapperConfig.name}`);
+                await kcAdminClient.clients.updateProtocolMapper(
+                    { id: clientUuid, mapperId: existingMapper.id! },
+                    {
+                        ...mapperConfig,
+                        id: existingMapper.id,
+                    }
+                );
+            } else {
+                console.log(`Platform: Creating mapper: ${mapperConfig.name}`);
+                await kcAdminClient.clients.addProtocolMapper(
+                    { id: clientUuid },
+                    mapperConfig
+                );
+            }
         }
 
-        const siteIdsMapper = mappers.find((m: any) => m.name === 'site_ids');
-        if (!siteIdsMapper) {
-            await kcAdminClient.clients.addProtocolMapper(
-                { id: clientUuid },
-                {
-                    name: 'site_ids',
-                    protocol: 'openid-connect',
-                    protocolMapper: 'oidc-usermodel-attribute-mapper',
-                    config: {
-                        'user.attribute': 'site_ids',
-                        'claim.name': 'site_ids',
-                        'jsonType.label': 'String',
-                        'id.token.claim': 'true',
-                        'access.token.claim': 'true',
-                        'userinfo.token.claim': 'true',
-                        multivalued: 'true',
-                    },
-                }
-            );
-            console.log('✅ Created site_ids mapper');
-        }
+        // Get and print Client Secret
+        const secretStruct = await kcAdminClient.clients.getClientSecret({ id: clientUuid });
+        const clientSecret = secretStruct.value;
+        console.log(`\n🔑 Client Secret: ${clientSecret}`);
 
         // Create roles
         const roles = ['Superadmin', 'Admin_Tenant', 'Admin_Site', 'User_Site'];
         for (const roleName of roles) {
             try {
-                await kcAdminClient.roles.findOneByName({ name: roleName });
-                console.log(`ℹ️  Role '${roleName}' already exists`);
+                // IMPORTANT: findOneByName might return null instead of throwing, so check the result!
+                const existingRole = await kcAdminClient.roles.findOneByName({ name: roleName, realm: REALM_NAME });
+                if (existingRole) {
+                    console.log(`ℹ️  Role '${roleName}' already exists in realm '${REALM_NAME}'`);
+                } else {
+                    // Throw to trigger catch block for creation, or just create here.
+                    throw new Error('Role not found');
+                }
             } catch {
-                await kcAdminClient.roles.create({ name: roleName });
-                console.log(`✅ Created role '${roleName}'`);
+                await kcAdminClient.roles.create({ name: roleName, realm: REALM_NAME });
+                console.log(`✅ Created role '${roleName}' in realm '${REALM_NAME}'`);
             }
         }
 
@@ -170,46 +216,120 @@ async function setupKeycloak() {
         for (const userData of testUsers) {
             const existingUsers = await kcAdminClient.users.find({
                 username: userData.username,
+                realm: REALM_NAME
             });
 
             let userId: string;
             if (existingUsers.length > 0) {
-                console.log(`ℹ️  User '${userData.username}' already exists`);
-                userId = existingUsers[0].id!;
-            } else {
-                const user = await kcAdminClient.users.create({
-                    username: userData.username,
-                    email: userData.email,
-                    firstName: userData.firstName,
-                    lastName: userData.lastName,
-                    enabled: true,
-                    emailVerified: true,
-                    attributes: userData.attributes,
-                });
-                userId = user.id;
-                console.log(`✅ Created user '${userData.username}'`);
-
-                // Set password
-                await kcAdminClient.users.resetPassword({
-                    id: userId,
-                    credential: {
-                        temporary: false,
-                        type: 'password',
-                        value: 'password123',
-                    },
-                });
+                console.log(`ℹ️  User '${userData.username}' already exists. Deleting and recreating...`);
+                await kcAdminClient.users.del({ id: existingUsers[0].id!, realm: REALM_NAME });
             }
 
-            // Assign roles
-            for (const roleName of userData.roles) {
-                const role = await kcAdminClient.roles.findOneByName({
-                    name: roleName,
+            // Create user
+            const user = await kcAdminClient.users.create({
+                username: userData.username,
+                email: userData.email,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                enabled: true,
+                emailVerified: true,
+                realm: REALM_NAME
+            });
+            userId = user.id;
+            console.log(`✅ Created user '${userData.username}'`);
+
+            // Set password
+            await kcAdminClient.users.resetPassword({
+                id: userId,
+                credential: {
+                    temporary: false,
+                    type: 'password',
+                    value: 'password123',
+                },
+                realm: REALM_NAME
+            });
+
+            // GROUP ASSIGNMENT STRATEGY (Fix for missing attributes)
+            if (userData.attributes?.tenant_id) {
+                const groupName = `TenantGroup_${userData.username}`;
+                console.log(`Creating Group '${groupName}' for attributes...`);
+
+                // 1. Create Group with Attributes
+                const group = await kcAdminClient.groups.create({
+                    name: groupName,
+                    attributes: userData.attributes, // Assign attributes to Group
+                    realm: REALM_NAME
                 });
-                if (role) {
-                    await kcAdminClient.users.addRealmRoleMappings({
-                        id: userId,
-                        roles: [{ id: role.id!, name: role.name! }],
+
+                // 2. Add User to Group
+                await kcAdminClient.users.addToGroup({
+                    id: userId,
+                    groupId: group.id!,
+                    realm: REALM_NAME
+                });
+                console.log(`✅ Assigned user '${userData.username}' to group '${groupName}' (with attributes)`);
+            }
+
+            // Assign roles (Realm and Client)
+            for (const roleName of userData.roles) {
+                try {
+                    // 1. Assign Realm Role
+                    console.log(`🔍 Finding Realm role '${roleName}'...`);
+                    const realmRole = await kcAdminClient.roles.findOneByName({
+                        name: roleName,
+                        realm: REALM_NAME
                     });
+
+                    if (realmRole) {
+                        await kcAdminClient.users.addRealmRoleMappings({
+                            id: userId,
+                            realm: REALM_NAME,
+                            roles: [{ id: realmRole.id!, name: realmRole.name! }],
+                        });
+                        console.log(`✅ Assigned Realm role '${roleName}' to user '${userData.username}'`);
+                    } else {
+                        console.error(`❌ Realm Role '${roleName}' not found!`);
+                    }
+
+                    // 2. Create and Assign Client Role
+                    console.log(`🔍 Processing Client role '${roleName}' for client '${CLIENT_ID}'...`);
+
+                    // Check if client role exists
+                    let clientLevelRole = await kcAdminClient.clients.findRole({
+                        id: clientUuid,
+                        roleName: roleName
+                    }).catch(() => null);
+
+                    if (!clientLevelRole) {
+                        try {
+                            // Syntax might vary, trying flattened object based on error message
+                            await kcAdminClient.clients.createRole({
+                                id: clientUuid,
+                                name: roleName
+                            });
+                            console.log(`✅ Created Client role '${roleName}'`);
+
+                            // Fetch again to get ID
+                            clientLevelRole = await kcAdminClient.clients.findRole({
+                                id: clientUuid,
+                                roleName: roleName
+                            });
+                        } catch (e) {
+                            console.log(`ℹ️ Client role '${roleName}' creation skipped (error: ${e.message})`);
+                        }
+                    }
+
+                    if (clientLevelRole) {
+                        await kcAdminClient.users.addClientRoleMappings({
+                            id: userId,
+                            clientUniqueId: clientUuid,
+                            roles: [{ id: clientLevelRole.id!, name: clientLevelRole.name! }],
+                        });
+                        console.log(`✅ Assigned Client role '${roleName}' to user '${userData.username}'`);
+                    }
+
+                } catch (err) {
+                    console.error(`❌ Failed to process role '${roleName}' for user '${userData.username}':`, err);
                 }
             }
         }

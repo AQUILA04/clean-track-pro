@@ -3,7 +3,7 @@ import React, { Fragment } from 'react';
 interface ModalProps {
     isOpen: boolean;
     onClose: () => void;
-    title: string;
+    title?: React.ReactNode;
     children: React.ReactNode;
 }
 
@@ -12,7 +12,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
 
     return (
         <div className="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity"></div>
 
             <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                 <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">

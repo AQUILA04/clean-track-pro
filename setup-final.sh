@@ -38,13 +38,22 @@ fi
 
 print_success "Docker is running"
 
+# Create network if not exists
+print_info "Checking Docker network..."
+if ! sudo docker network inspect cleantrack-net >/dev/null 2>&1; then
+    sudo docker network create cleantrack-net
+    print_success "Created network cleantrack-net"
+else
+    print_info "Network cleantrack-net already exists"
+fi
+
 # Clean up any existing containers
 print_info "Cleaning up existing containers..."
 sudo docker rm -f cleantrack-postgres cleantrack-keycloak cleantrack-redis cleantrack-maildev 2>/dev/null || true
 
 # Start PostgreSQL
 print_info "Starting PostgreSQL..."
-sudo docker run -d --name cleantrack-postgres --network host \
+sudo docker run -d --name cleantrack-postgres --network cleantrack-net -p 5432:5432 \
     -e POSTGRES_USER=postgres \
     -e POSTGRES_PASSWORD=postgres \
     -e POSTGRES_DB=cleantrack \
@@ -52,11 +61,11 @@ sudo docker run -d --name cleantrack-postgres --network host \
 
 # Start Redis
 print_info "Starting Redis..."
-sudo docker run -d --name cleantrack-redis --network host redis:alpine
+sudo docker run -d --name cleantrack-redis --network cleantrack-net -p 6379:6379 redis:alpine
 
 # Start MailDev
 print_info "Starting MailDev..."
-sudo docker run -d --name cleantrack-maildev --network host maildev/maildev
+sudo docker run -d --name cleantrack-maildev --network cleantrack-net -p 1080:1080 -p 1025:1025 maildev/maildev
 
 # Wait for PostgreSQL to be ready
 print_info "Waiting for PostgreSQL to be ready..."
@@ -68,11 +77,11 @@ print_success "PostgreSQL is ready"
 
 # Start Keycloak
 print_info "Starting Keycloak..."
-sudo docker run -d --name cleantrack-keycloak --network host \
+sudo docker run -d --name cleantrack-keycloak --network cleantrack-net -p 8080:8080 \
     -e KEYCLOAK_ADMIN=admin \
     -e KEYCLOAK_ADMIN_PASSWORD=admin \
     -e KC_DB=postgres \
-    -e KC_DB_URL=jdbc:postgresql://localhost:5432/cleantrack \
+    -e KC_DB_URL=jdbc:postgresql://cleantrack-postgres:5432/cleantrack \
     -e KC_DB_USERNAME=postgres \
     -e KC_DB_PASSWORD=postgres \
     -e KC_HOSTNAME=localhost \

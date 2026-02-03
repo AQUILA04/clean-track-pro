@@ -12,7 +12,7 @@ export class OrdersController {
     constructor(private readonly ordersService: OrdersService) { }
 
     @Post()
-    @Roles({ roles: ['realm:User_Site', 'realm:Admin_Site', 'realm:Admin_Tenant'] })
+    @Roles({ roles: ['User_Site', 'Admin_Site', 'Admin_Tenant'] })
     create(@Body() createOrderDto: CreateOrderDto, @CurrentUser() user: AuthUser) {
         if (!user.tenant_id) {
             throw new BadRequestException('Tenant ID required to create order');
@@ -21,7 +21,7 @@ export class OrdersController {
     }
 
     @Patch(':id/status')
-    @Roles({ roles: ['realm:User_Site', 'realm:Admin_Site', 'realm:Admin_Tenant'] })
+    @Roles({ roles: ['User_Site', 'Admin_Site', 'Admin_Tenant'] })
     updateStatus(
         @Param('id') id: string,
         @Body() updateOrderStatusDto: UpdateOrderStatusDto,
@@ -34,7 +34,7 @@ export class OrdersController {
     }
 
     @Get('stats/dashboard')
-    @Roles({ roles: ['realm:Admin_Site', 'realm:Admin_Tenant', 'realm:Super_Admin'] })
+    @Roles({ roles: ['Admin_Site', 'Admin_Tenant', 'Superadmin'] })
     getDashboardStats(
         @CurrentUser() user: AuthUser,
         @Query('timezone') timezone?: string,
@@ -48,7 +48,7 @@ export class OrdersController {
     }
 
     @Get()
-    @Roles({ roles: ['realm:User_Site', 'realm:Admin_Site', 'realm:Admin_Tenant'] })
+    @Roles({ roles: ['User_Site', 'Admin_Site', 'Admin_Tenant'] })
     findAll(
         @CurrentUser() user: AuthUser,
         @Query('page') page: string = '1',

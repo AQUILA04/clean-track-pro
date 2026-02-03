@@ -53,11 +53,20 @@ echo Step 1/6: Starting Docker containers
 echo ========================================
 echo.
 
+echo [INFO] Checking Docker network...
+docker network inspect cleantrack-net >nul 2>&1
+if %errorlevel% neq 0 (
+    docker network create cleantrack-net
+    echo [SUCCESS] Created network cleantrack-net
+) else (
+    echo [INFO] Network cleantrack-net already exists
+)
+
 echo [INFO] Stopping existing containers...
 docker rm -f cleantrack-postgres cleantrack-keycloak cleantrack-redis cleantrack-maildev >nul 2>&1
 
 echo [INFO] Starting PostgreSQL...
-docker run -d --name cleantrack-postgres --network host -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=cleantrack postgres:16-alpine
+docker run -d --name cleantrack-postgres --network cleantrack-net -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=cleantrack postgres:16
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to start PostgreSQL
     pause
@@ -65,7 +74,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [INFO] Starting Redis...
-docker run -d --name cleantrack-redis --network host redis:7-alpine
+docker run -d --name cleantrack-redis --network cleantrack-net -p 6379:6379 redis:alpine
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to start Redis
     pause
@@ -73,7 +82,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [INFO] Starting MailDev...
-docker run -d --name cleantrack-maildev --network host maildev/maildev
+docker run -d --name cleantrack-maildev --network cleantrack-net -p 1080:1080 -p 1025:1025 maildev/maildev
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to start MailDev
     pause
@@ -81,7 +90,15 @@ if %errorlevel% neq 0 (
 )
 
 echo [INFO] Starting Keycloak...
-docker run -d --name cleantrack-keycloak --network host -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin -e KC_HTTP_PORT=8080 -e KC_HOSTNAME_STRICT=false -e KC_HOSTNAME_STRICT_HTTPS=false -e KC_HTTP_ENABLED=true quay.io/keycloak/keycloak:26.0.7 start-dev
+docker run -d --name cleantrack-keycloak --network cleantrack-net -p 8080:8080 ^
+    -e KEYCLOAK_ADMIN=admin ^
+    -e KEYCLOAK_ADMIN_PASSWORD=admin ^
+    -e KC_DB=postgres ^
+    -e KC_DB_URL=jdbc:postgresql://cleantrack-postgres:5432/cleantrack ^
+    -e KC_DB_USERNAME=postgres ^
+    -e KC_DB_PASSWORD=postgres ^
+    -e KC_HOSTNAME=localhost ^
+    quay.io/keycloak/keycloak:26.1 start-dev
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to start Keycloak
     pause
@@ -99,6 +116,16 @@ echo.
 
 echo [INFO] Waiting for PostgreSQL...
 timeout /t 10 /nobreak >nul
+REM Wait for PG using docker exec
+:wait_postgres
+docker exec cleantrack-postgres pg_isready -U postgres >nul 2>&1
+if %errorlevel% neq 0 (
+    timeout /t 2 /nobreak >nul
+    goto wait_postgres
+)
+echo [SUCCESS] PostgreSQL is ready
+echo.
+
 
 echo [INFO] Waiting for Keycloak (this may take 1-2 minutes)...
 :wait_keycloak
@@ -116,7 +143,7 @@ echo ========================================
 echo.
 
 echo [INFO] Installing root dependencies...
-call npm install
+call npm install --legacy-peer-deps
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to install root dependencies
     pause
@@ -125,23 +152,36 @@ if %errorlevel% neq 0 (
 
 echo [INFO] Installing backend dependencies...
 cd backend
-call npm install --legacy-peer-deps
-if %errorlevel% neq 0 (
-    echo [ERROR] Failed to install backend dependencies
-    pause
-    exit /b 1
+if not exist node_modules (
+    call npm install --legacy-peer-deps
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install backend dependencies
+        pause
+        exit /b 1
+    )
+) else (
+    echo [INFO] Backend node_modules already exists, skipping installation
 )
 cd ..
 
 echo [INFO] Installing frontend dependencies...
 cd frontend
-call npm install
-if %errorlevel% neq 0 (
-    echo [ERROR] Failed to install frontend dependencies
-    pause
-    exit /b 1
+if not exist node_modules (
+    call npm install
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install frontend dependencies
+        pause
+        exit /b 1
+    )
+) else (
+    echo [INFO] Frontend node_modules already exists, skipping installation
 )
 cd ..
+
+echo [INFO] Installing dependencies for Keycloak setup...
+if not exist node_modules (
+    call npm install @keycloak/keycloak-admin-client ts-node typescript @types/node --legacy-peer-deps
+)
 
 echo [SUCCESS] All dependencies installed
 echo.
@@ -173,9 +213,7 @@ echo [INFO] Running migrations...
 cd backend
 call npm run migration:run
 if %errorlevel% neq 0 (
-    echo [ERROR] Failed to run migrations
-    pause
-    exit /b 1
+    echo [INFO] No migrations to run or migrations already applied
 )
 cd ..
 

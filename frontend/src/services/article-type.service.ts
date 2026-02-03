@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { ArticleType, CreateArticleTypeDto, UpdateArticleTypeDto } from '../types/article-type';
+import { CreateArticleTypeDto, UpdateArticleTypeDto } from '../types/article-type';
+import { MOCK_ARTICLES } from '../data/mock-articles';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'; // Adjust based on env
 
@@ -40,4 +41,20 @@ export const articleTypeService = {
         });
         return response.data.data;
     },
+
+    async getMockArticles(): Promise<ArticleType[]> {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve(MOCK_ARTICLES as ArticleType[]);
+            }, 500);
+        });
+    }
 };
+
+export interface ArticleType {
+    id: string;
+    name: string;
+    articleId: string; // Display ID e.g. ART-001
+    category: string;
+    icon?: string;
+}

@@ -4,7 +4,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 export interface InviteUserDto {
     email: string;
     role: string;
-    siteId: string;
+    agencyIds: string[];
 }
 
 const getAuthHeaders = () => {
@@ -14,6 +14,18 @@ const getAuthHeaders = () => {
         'Authorization': `Bearer ${token}`,
     };
 };
+
+import { MOCK_USERS } from '../data/mock-users';
+
+export interface User {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    agencies: { id: string; name: string }[];
+    avatar?: string | null;
+}
 
 export const UserService = {
     inviteUser: async (data: InviteUserDto) => {
@@ -32,7 +44,7 @@ export const UserService = {
         return response.json();
     },
 
-    getUsers: async () => {
+    getUsers: async (): Promise<User[]> => {
         const response = await fetch(`${API_URL}/users`, {
             method: 'GET',
             headers: getAuthHeaders(),
@@ -45,4 +57,13 @@ export const UserService = {
         const res = await response.json();
         return res.data;
     },
+
+    getMockUsers: async (): Promise<User[]> => {
+        // Simulate network delay
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve(MOCK_USERS);
+            }, 500);
+        });
+    }
 };

@@ -11,6 +11,8 @@ export interface ArticleType {
 
 export interface CreateArticleTypeDto {
     label: string;
+    name?: string; // Alias for label for UI consistency
+    articleId?: string;
     category: string;
     is_active?: boolean;
     icon?: string;

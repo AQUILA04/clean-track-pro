@@ -23,6 +23,7 @@ export const authOptions: NextAuthOptions = {
                 token.site_ids = (profile as any).site_ids;
                 token.roles = (profile as any).realm_access?.roles || [];
                 token.accessToken = account.access_token;
+                token.id_token = account.id_token;
             }
             return token;
         },
@@ -34,6 +35,7 @@ export const authOptions: NextAuthOptions = {
                 (session.user as any).roles = token.roles;
             }
             session.accessToken = token.accessToken as string;
+            (session as any).id_token = token.id_token as string;
             return session;
         },
     },
