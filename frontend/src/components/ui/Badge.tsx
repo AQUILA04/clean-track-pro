@@ -29,6 +29,7 @@ const statusConfig: Record<string, { color: string, label: string }> = {
     // Agency Statuses
     ACTIVE: { color: 'text-white bg-[#10B981]', label: 'ACTIF' }, // Green-500
     CLOSED: { color: 'text-white bg-destructive', label: 'FERMÉE' },
+    INACTIVE: { color: 'text-white bg-gray-500', label: 'INACTIF' },
     MAINTENANCE: { color: 'text-white bg-accent', label: 'MAINTENANCE' },
 };
 

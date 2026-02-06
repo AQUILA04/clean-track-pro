@@ -3,9 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { TenantService, UpdateTenantBrandingDto } from '@/services/tenant.service';
-import { UserService, InviteUserDto } from '@/services/user.service';
-import { SiteService } from '@/services/site.service';
-
+import { UserService } from '@/services/user.service';
 import InviteUserModal from '@/components/admin/InviteUserModal';
 
 export default function AgencySettingsPage() {
@@ -18,9 +16,29 @@ export default function AgencySettingsPage() {
 
     useEffect(() => {
         // Fetch initial data
-        setLoading(false);
-        fetchUsers();
+        const init = async () => {
+            try {
+                await Promise.all([fetchTenant(), fetchUsers()]);
+            } catch (error) {
+                console.error('Initialization error:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        init();
     }, []);
+
+    const fetchTenant = async () => {
+        try {
+            const tenant = await TenantService.getCurrentTenant();
+            setBrandingForm({
+                name: tenant.name,
+                logoUrl: tenant.logoUrl || ''
+            });
+        } catch (error) {
+            console.error('Failed to fetch tenant details', error);
+        }
+    };
 
     const fetchUsers = async () => {
         try {

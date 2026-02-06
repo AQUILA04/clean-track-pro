@@ -1,20 +1,46 @@
 'use client';
 
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import React, { useEffect, useState } from 'react';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { ChevronDown } from 'lucide-react';
-
-const data = [
-    { name: 'LUN', value: 400 },
-    { name: 'MAR', value: 650 },
-    { name: 'MER', value: 300 },
-    { name: 'JEU', value: 900 },
-    { name: 'VEN', value: 800 },
-    { name: 'SAM', value: 500 },
-    { name: 'DIM', value: 200 },
-];
+import { OrdersService } from '@/services/orders.service';
+import { useParams } from 'next/navigation';
 
 export const PerformanceChartCard = () => {
+    const params = useParams(); // Get siteId from URL params if available
+    const siteId = params?.id as string;
+
+    const [data, setData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            // If no siteId is present (e.g. global dashboard), we might want to support global stats or skip
+            // For now, assuming this component is mostly used in Agency Details or context where siteId matters
+            try {
+                const stats = await OrdersService.getWeeklyStats(siteId);
+                // Transform if necessary, backend returns { name, revenue, orders } which matches Recharts needs
+                setData(stats);
+            } catch (error) {
+                console.error('Failed to fetch weekly stats', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (siteId) {
+            fetchStats();
+        } else {
+            // Optional: Fetch global stats if no siteId? Or just mock/empty?
+            // For this task, we focus on Agency Page which has siteId.
+            setLoading(false);
+        }
+    }, [siteId]);
+
+    if (loading) {
+        return <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm col-span-1 md:col-span-2 flex items-center justify-center h-[350px]">Chargement...</div>;
+    }
+
     return (
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm col-span-1 md:col-span-2">
             <div className="flex justify-between items-center mb-8">
@@ -35,13 +61,12 @@ export const PerformanceChartCard = () => {
                             tick={{ fill: '#9CA3AF', fontSize: 10, fontWeight: 600 }}
                             dy={10}
                         />
-                        {/* Hidden YAxis for clean look or customize */}
                         <Tooltip
                             cursor={{ fill: '#F3F4F6' }}
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            formatter={(value: number) => [`${value} €`, 'Revenus']}
                         />
-                        {/* Bars with rounded tops */}
-                        <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
+                        <Bar dataKey="revenue" radius={[4, 4, 0, 0]} barSize={40}>
                             {data.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill="#1A5AD7" />
                             ))}
@@ -54,12 +79,9 @@ export const PerformanceChartCard = () => {
             <div className="flex justify-center gap-6 mt-4">
                 <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full bg-primary" />
-                    <span className="text-sm text-gray-600 font-medium">Revenus (k€)</span>
+                    <span className="text-sm text-gray-600 font-medium">Revenus</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-blue-100" />
-                    <span className="text-sm text-gray-600 font-medium">Volume</span>
-                </div>
+                {/* Volume bar not displayed yet, maybe add multi-bar later */}
             </div>
         </div>
     );

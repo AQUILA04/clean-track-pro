@@ -13,24 +13,24 @@ so that **I can delegate management of specific locations** and maintain profess
 ## Acceptance Criteria
 
 1.  **Agency Branding Management**
-    - [ ] Given I am logged in as an `Admin_Tenant`
-    - [ ] When I navigate to the "Agency Settings" page
-    - [ ] Then I see a form to update the Agency Name and Logo
-    - [ ] When I save changes
-    - [ ] Then the branding is updated across the platform for my tenant (persisted in DB)
+    - [x] Given I am logged in as an `Admin_Tenant`
+    - [x] When I navigate to the "Agency Settings" page
+    - [x] Then I see a form to update the Agency Name and Logo
+    - [x] When I save changes
+    - [x] Then the branding is updated across the platform for my tenant (persisted in DB)
 
 2.  **Admin_Site User Invitation**
-    - [ ] Given I am on the "Agency Settings" or "User Management" section
-    - [ ] When I click "Invite User"
-    - [ ] Then I can enter an Email Address and select a target Site (Location)
-    - [ ] And I can select the role `Admin_Site` (or it is pre-selected)
-    - [ ] When I submit the invitation
-    - [ ] Then a new user record is created in Keycloak (or an invitation flow initiated) linked to the specific Site ID and Tenant ID
-    - [ ] And the user appears in the "Pending" or "Active" users list
+    - [x] Given I am on the "Agency Settings" or "User Management" section
+    - [x] When I click "Invite User"
+    - [x] Then I can enter an Email Address and select a target Site (Location)
+    - [x] And I can select the role `Admin_Site` (or it is pre-selected)
+    - [x] When I submit the invitation
+    - [x] Then a new user record is created in Keycloak (or an invitation flow initiated) linked to the specific Site ID and Tenant ID
+    - [x] And the user appears in the "Pending" or "Active" users list
 
 3.  **Security & Access Control**
-    - [ ] Ensure only `Admin_Tenant` (or Superadmin) can access these settings
-    - [ ] Ensure `Admin_Tenant` can ONLY invite users to Sites within their own Tenant (RLS enforcement)
+    - [x] Ensure only `Admin_Tenant` (or Superadmin) can access these settings
+    - [x] Ensure `Admin_Tenant` can ONLY invite users to Sites within their own Tenant (RLS enforcement)
 
 ## Tasks / Subtasks
 
@@ -109,6 +109,7 @@ Antigravity (Sm Agent Persona) - Validated & Improved
 - Integrated real `@keycloak/keycloak-admin-client` for user creation and listing.
 - Implemented Frontend Agency Settings page with branding and user management.
 - Verified with unit tests (Backend passes).
+- **Final Integration:** Frontend is now fully connected to the backend. Mock data removed. `SiteService` and `UserService` updated to consume real APIs. `AgencySettingsPage` fetches real data.
 
 ### File List
 
@@ -126,5 +127,6 @@ Antigravity (Sm Agent Persona) - Validated & Improved
 - `frontend/src/app/settings/agency/page.tsx`
 - `frontend/src/services/tenant.service.ts`
 - `frontend/src/services/user.service.ts`
+- `frontend/src/services/site.service.ts`
 - `backend/src/tenant/tenant.service.spec.ts`
 - `backend/src/user/user.service.spec.ts`

@@ -168,6 +168,48 @@ async function setupKeycloak() {
             }
         }
 
+        // --- GRANT SERVICE ACCOUNT PERMISSIONS (Fix for 403 Forbidden) ---
+        console.log(`\n👮 Configuring Service Account Permissions...`);
+        try {
+            // 1. Get Service Account User
+            const serviceAccountUser = await kcAdminClient.clients.getServiceAccountUser({
+                id: clientUuid,
+            });
+            console.log(`   Service Account User ID: ${serviceAccountUser.id}`);
+
+            // 2. Find 'realm-management' client
+            const realmManagementClients = await kcAdminClient.clients.find({ clientId: 'realm-management' });
+            if (realmManagementClients.length > 0) {
+                const realmManagementId = realmManagementClients[0].id!;
+
+                // 3. Find roles to assign
+                const rolesToAssign = ['view-users', 'query-users', 'manage-users'];
+                const availableRoles = await kcAdminClient.clients.listRoles({ id: realmManagementId });
+                const roles = availableRoles.filter(r => rolesToAssign.includes(r.name!));
+
+                if (roles.length > 0) {
+                    // 4. Assign roles
+                    await kcAdminClient.users.addClientRoleMappings({
+                        id: serviceAccountUser.id!,
+                        clientUniqueId: realmManagementId,
+                        roles: roles.map(r => ({
+                            id: r.id!,
+                            name: r.name!,
+                        })),
+                    });
+                    console.log(`✅ Granted roles to Service Account: ${roles.map(r => r.name).join(', ')}`);
+                } else {
+                    console.warn(`⚠️  Could not find roles to assign: ${rolesToAssign.join(', ')}`);
+                }
+            } else {
+                console.warn(`⚠️  'realm-management' client not found! Cannot assign permissions.`);
+            }
+
+        } catch (error) {
+            console.error(`❌ Failed to configure Service Account permissions:`, error);
+        }
+        // ------------------------------------------------------------------
+
         // Get and print Client Secret
         const secretStruct = await kcAdminClient.clients.getClientSecret({ id: clientUuid });
         const clientSecret = secretStruct.value;

@@ -97,7 +97,7 @@ so that **the physical items can be tracked**.
     - [x] Implement Error Toast with **Retry** button
 
 - [x] **Tooling**
-  - [x] Create `scripts/mock-print-proxy.js`: A simple Node.js HTTP server that listens on 8080 and logs the received JSON payload to console. **Crucial for verifying the implementation without hardware.**
+  - [x] Create `scripts/mock-print-proxy.js`: A simple Node.js HTTP server that listens on 8090 and logs the received JSON payload to console. **Crucial for verifying the implementation without hardware.**
 
 - [x] **Verification**
   - [x] Manual Test: Run `node scripts/mock-print-proxy.js`.

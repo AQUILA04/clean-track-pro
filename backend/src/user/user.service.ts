@@ -38,9 +38,14 @@ export class UserService {
         return this.keycloakService.createUser(realm, inviteUserDto.email, attributes);
     }
 
-    async getUsers(tenantId: string) {
+    async getUsers(tenantId: string, siteId?: string) {
         const tenant = await this.tenantService.findOne(tenantId);
         const realm = tenant.subdomain;
+
+        if (siteId) {
+            return this.keycloakService.findUsersByAttribute(realm, 'site_ids', siteId);
+        }
+
         return this.keycloakService.findUsersByAttribute(realm, 'tenant_id', tenantId);
     }
 }

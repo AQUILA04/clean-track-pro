@@ -1,9 +1,6 @@
 'use client';
 
-// Note: Using 'use client' because we might interact or use hooks, 
-// though the params are server-side. Next.js 15+ async params handling is key.
-
-import React from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -12,41 +9,69 @@ import { AgencyStatsRow } from '@/components/agencies/AgencyStatsRow';
 import { AgencyInfoCard } from '@/components/agencies/AgencyInfoCard';
 import { TeamListCard } from '@/components/agencies/TeamListCard';
 import { PerformanceChartCard } from '@/components/agencies/PerformanceChartCard';
+import { AgencyFormModal } from '@/components/agencies/AddAgencyModal'; // Renamed export, same file
+import { SiteService, Site } from '@/services/site.service';
+import { UserService, User } from '@/services/user.service';
+import { OrdersService } from '@/services/orders.service';
 
-// MOCK DATA FETCHING
-const getAgencyData = (id: string) => {
-    // Simulate finding the mock agency
-    // In real app, this would be an API call
-    return {
-        id,
-        name: 'Agence Paris Étoile',
-        city: 'Paris',
-        postalCode: '75008',
-        status: 'ACTIVE' as const,
-        revenue: 1240,
-        revenueTrend: 12,
-        orders: 42,
-        occupancyRate: 84,
-        address: '15 Avenue de la Grande Armée',
-        phone: '+33 1 45 67 89 00',
-        email: 'etoile@cleantrack.pro',
-        managers: [
-            { id: '1', name: 'Jean S.', role: 'Admin_Site' as const, initials: 'JS' },
-            { id: '2', name: 'Marie L.', role: 'User_Site' as const, initials: 'ML' },
-            { id: '3', name: 'Thomas B.', role: 'User_Site' as const, initials: 'TB' },
-            { id: '4', name: 'Claire D.', role: 'User_Site' as const, initials: 'CD' },
-        ]
-    };
-};
+export default function AgencyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
+    const [site, setSite] = useState<Site | null>(null);
+    const [users, setUsers] = useState<any[]>([]);
+    const [stats, setStats] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-export default function AgencyDetailsPage({ params }: { params: { id: string } }) {
-    // Directly access id since we are in a simple client component context where params is an object
-    const { id } = params;
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                // 1. Fetch Site Details
+                // If this fails, it might throw, catching to show error or notFound
+                const siteData = await SiteService.getById(id);
+                setSite(siteData);
 
-    const agency = getAgencyData(id);
+                // 2. Fetch Users for this Site
+                const siteUsersData = await UserService.getUsers(id);
+                const siteUsers = siteUsersData.map(u => ({
+                    id: u.id,
+                    name: u.username || u.email,
+                    role: (u.attributes?.role?.[0] || 'User_Site') as any, // Simple casting for display
+                    initials: (u.username || u.email).substring(0, 2).toUpperCase()
+                }));
+                setUsers(siteUsers);
 
-    if (!agency) {
-        notFound();
+                // 3. Fetch Dashboard Stats for this Site
+                // timezone, startDate, endDate are optional, defaulting to backend defaults (UTC, today)
+                // We might want to add a date picker later, but for now default is fine or we can match the one on the main dashboard if improved
+                const dashboardStats = await OrdersService.getDashboardStats(undefined, undefined, undefined, id);
+                setStats(dashboardStats);
+
+            } catch (err) {
+                console.error('Failed to fetch agency details:', err);
+                setError('Failed to load agency details.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (id) {
+            fetchData();
+        }
+    }, [id]);
+
+    if (loading) {
+        return <div className="p-8 text-center text-gray-500">Chargement des détails de l'agence...</div>;
+    }
+
+    if (error || !site) {
+        return (
+            <div className="p-8 text-center">
+                <p className="text-red-500 mb-4">{error || 'Agence introuvable'}</p>
+                <Link href="/agencies" className="text-blue-600 hover:underline">Retour à la liste</Link>
+            </div>
+        );
     }
 
     return (
@@ -62,28 +87,29 @@ export default function AgencyDetailsPage({ params }: { params: { id: string } }
             </div>
 
             <AgencyHeader
-                name={agency.name}
-                city={agency.city}
-                postalCode={agency.postalCode}
-                status={agency.status}
+                name={site.name}
+                city={site.city || ''}
+                postalCode={site.postal_code || ''}
+                status={site.status}
+                onEdit={() => setIsEditModalOpen(true)}
             />
 
             <AgencyStatsRow
-                revenue={agency.revenue}
-                revenueTrend={agency.revenueTrend}
-                activeOrders={agency.orders}
-                occupancyRate={agency.occupancyRate}
+                revenue={stats?.revenueToday || 0}
+                revenueTrend={0}
+                activeOrders={stats?.ordersToday || 0}
+                occupancyRate={0}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column (2/3 width) */}
                 <div className="lg:col-span-2 space-y-6">
                     <AgencyInfoCard
-                        address={agency.address}
-                        city={agency.city}
-                        postalCode={agency.postalCode}
-                        phone={agency.phone}
-                        email={agency.email}
+                        address={site.location || ''}
+                        city={site.city || ''}
+                        postalCode={site.postal_code || ''}
+                        phone={site.phone || ''}
+                        email={site.email || ''}
                     />
 
                     <PerformanceChartCard />
@@ -91,9 +117,22 @@ export default function AgencyDetailsPage({ params }: { params: { id: string } }
 
                 {/* Right Column (1/3 width) */}
                 <div className="lg:col-span-1">
-                    <TeamListCard members={agency.managers} />
+                    <TeamListCard members={users} />
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            <AgencyFormModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                onSuccess={() => {
+                    // Refresh data
+                    setIsEditModalOpen(false);
+                    // Re-fetch site details
+                    SiteService.getById(site.id).then(setSite);
+                }}
+                initialData={site}
+            />
         </div>
     );
 }

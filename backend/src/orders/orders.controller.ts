@@ -39,12 +39,25 @@ export class OrdersController {
         @CurrentUser() user: AuthUser,
         @Query('timezone') timezone?: string,
         @Query('startDate') startDate?: string,
-        @Query('endDate') endDate?: string
+        @Query('endDate') endDate?: string,
+        @Query('siteId') siteId?: string
     ) {
         if (!user.tenant_id) {
             throw new BadRequestException('Tenant ID required to fetch dashboard stats');
         }
-        return this.ordersService.getDashboardStats(user.tenant_id, timezone, startDate, endDate);
+        return this.ordersService.getDashboardStats(user.tenant_id, timezone, startDate, endDate, siteId);
+    }
+
+    @Get('stats/weekly')
+    @Roles({ roles: ['Admin_Site', 'Admin_Tenant', 'Superadmin', 'User_Site'] })
+    getWeeklyStats(
+        @CurrentUser() user: AuthUser,
+        @Query('siteId') siteId?: string
+    ) {
+        if (!user.tenant_id) {
+            throw new BadRequestException('Tenant ID required');
+        }
+        return this.ordersService.getWeeklyStats(user.tenant_id, siteId);
     }
 
     @Get()

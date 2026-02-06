@@ -63,8 +63,8 @@ describe('RlsService', () => {
 
         expect(result).toBe(mockResult);
         expect(dataSource.transaction).toHaveBeenCalled();
-        expect(mockManager.query).toHaveBeenCalledWith("SET LOCAL app.current_tenant = '123e4567-e89b-12d3-a456-426614174000'");
-        expect(mockManager.query).toHaveBeenCalledWith("SET LOCAL app.current_role = 'superadmin'");
+        expect(mockManager.query).toHaveBeenCalledWith("SET LOCAL \"app.current_tenant\" = '123e4567-e89b-12d3-a456-426614174000'");
+        expect(mockManager.query).toHaveBeenCalledWith("SET LOCAL \"app.current_role\" = 'superadmin'");
         expect(mockCallback).toHaveBeenCalledWith(mockManager);
     });
 
@@ -75,6 +75,6 @@ describe('RlsService', () => {
 
         await service.wrapTransaction(async () => { });
 
-        expect(mockManager.query).not.toHaveBeenCalledWith(expect.stringContaining('SET LOCAL app.current_tenant'));
+        expect(mockManager.query).not.toHaveBeenCalledWith(expect.stringContaining('SET LOCAL "app.current_tenant"'));
     });
 });

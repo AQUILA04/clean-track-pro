@@ -1,83 +1,74 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { AgencyCard, Agency } from '@/components/agencies/AgencyCard';
 import { AddAgencyCard } from '@/components/agencies/AddAgencyCard';
 import { AgencyFilters } from '@/components/agencies/AgencyFilters';
-import { AddAgencyModal } from '@/components/agencies/AddAgencyModal';
+import { AgencyFormModal } from '@/components/agencies/AddAgencyModal'; // Updated export name
 import { SuccessModal } from '@/components/ui/SuccessModal';
-
-// MOCK DATA
-const MOCK_AGENCIES: Agency[] = [
-    {
-        id: '1',
-        name: 'CleanTrack - Paris Centre',
-        city: 'Paris',
-        postalCode: '75001',
-        status: 'ACTIVE',
-        revenue: 1250,
-        revenueTrend: 4,
-        orders: 42,
-        image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb8f?q=80&w=2071&auto=format&fit=crop', // Laundry shop interior
-        managers: [
-            { name: 'Jean Dupont', initials: 'JD' },
-            { name: 'Alice Martin', initials: 'AM' }
-        ]
-    },
-    {
-        id: '2',
-        name: 'CleanTrack - Lyon Est',
-        city: 'Lyon',
-        postalCode: '69003',
-        status: 'ACTIVE',
-        revenue: 890,
-        revenueTrend: -2,
-        orders: 28,
-        image: 'https://images.unsplash.com/photo-1517677208171-0bc67995f396?q=80&w=2070&auto=format&fit=crop', // Modern laundry
-        managers: [
-            { name: 'Thomas Leroy', initials: 'TL' }
-        ]
-    },
-    {
-        id: '3',
-        name: 'CleanTrack - Marseille Sud',
-        city: 'Marseille',
-        postalCode: '13008',
-        status: 'MAINTENANCE',
-        revenue: 1100,
-        revenueTrend: 8,
-        orders: 35,
-        image: 'https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?q=80&w=2070&auto=format&fit=crop',
-        managers: [
-            { name: 'Sophie Moreau', initials: 'SM' }
-        ]
-    },
-    {
-        id: '4',
-        name: 'CleanTrack - Bordeaux Nord',
-        city: 'Bordeaux',
-        postalCode: '33000',
-        status: 'ACTIVE',
-        revenue: 750,
-        revenueTrend: 1,
-        orders: 22,
-        image: 'https://images.unsplash.com/photo-1521656693074-0ef32e80a5d5?q=80&w=2070&auto=format&fit=crop',
-        managers: [
-            { name: 'Paul Richard', initials: 'PR' }
-        ]
-    }
-];
+import { SiteService, Site } from '@/services/site.service';
 
 export default function AgenciesPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+    const [agencies, setAgencies] = useState<Agency[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedQuery, setDebouncedQuery] = useState('');
+    const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'>('ALL');
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedQuery(searchQuery);
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        fetchAgencies();
+    }, [debouncedQuery]);
+
+    const fetchAgencies = async () => {
+        try {
+            setLoading(true);
+            const sites = await SiteService.getAll(debouncedQuery);
+            // Transform Site data to Agency UI model
+            const mappedAgencies: Agency[] = sites.map((site: Site) => ({
+                id: site.id,
+                name: site.name,
+                city: site.city || (site.location ? site.location.split(',').pop()?.trim() : 'Unknown') || 'Unknown',
+                postalCode: site.postal_code || '00000',
+                status: (site.status as any) || 'ACTIVE', // Ensure status is mapped
+                revenue: 0,
+                revenueTrend: 0,
+                orders: 0,
+                image: site.logoUrl,
+                managers: []
+            }));
+            setAgencies(mappedAgencies);
+        } catch (error) {
+            console.error('Failed to fetch agencies', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleAgencyAdded = () => {
         setIsSuccessModalOpen(true);
+        fetchAgencies(); // Refresh list
     };
+
+    // Client-side status filtering on the already searched results
+    // Or should we move status filtering to backend too? 
+    // For now, let's keep status filtering client-side as it is fast on the result set
+    const filteredAgencies = agencies.filter(agency => {
+        if (filter === 'ALL') return true;
+        return agency.status === filter;
+    });
 
     return (
         <div className="flex flex-col min-h-screen bg-gray-50/50">
@@ -92,6 +83,8 @@ export default function AgenciesPage() {
                         <Input
                             placeholder="Rechercher une agence ou une ville..."
                             className="pl-10 bg-gray-100 border-none rounded-full h-10 w-full focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-white transition-colors"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
 
@@ -120,7 +113,7 @@ export default function AgenciesPage() {
                         </p>
                         <p className="text-sm text-gray-400 flex items-center gap-1">
                             <span className="inline-block w-4 h-4 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin mr-1 opacity-0" /> {/* Placeholder for sync icon */}
-                            Mis à jour il y a 5 min
+                            Mis à jour à l'instant
                         </p>
                     </div>
 
@@ -129,19 +122,27 @@ export default function AgenciesPage() {
                 <div className="h-8" /> {/* Spacer */}
 
                 {/* Filters */}
-                <AgencyFilters />
+                <AgencyFilters
+                    currentFilter={filter}
+                    onFilterChange={setFilter}
+                    totalCount={agencies.length}
+                />
 
                 {/* Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {MOCK_AGENCIES.map((agency) => (
-                        <AgencyCard key={agency.id} agency={agency as Agency} />
-                    ))}
-                    <AddAgencyCard onClick={() => setIsAddModalOpen(true)} />
-                </div>
+                {loading ? (
+                    <div className="p-8 text-center text-gray-500">Chargement des agences...</div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {filteredAgencies.map((agency) => (
+                            <AgencyCard key={agency.id} agency={agency} />
+                        ))}
+                        <AddAgencyCard onClick={() => setIsAddModalOpen(true)} />
+                    </div>
+                )}
             </div>
 
             {/* Modals */}
-            <AddAgencyModal
+            <AgencyFormModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 onSuccess={handleAgencyAdded}
@@ -151,10 +152,10 @@ export default function AgenciesPage() {
                 isOpen={isSuccessModalOpen}
                 onClose={() => setIsSuccessModalOpen(false)}
                 title="Agence créée avec succès"
-                message="L'agence 'Agence Centre-Ville' a été ajoutée à votre réseau. Vous pouvez maintenant configurer ses services."
-                secondaryMessage="Identifiant #AG-2024-005"
-                actionLabel="Voir les détails"
-                onAction={() => setIsSuccessModalOpen(false)} // Later navigate
+                message="La nouvelle agence a été ajoutée à votre réseau. Vous pouvez maintenant configurer ses services."
+                secondaryMessage="Action terminée"
+                actionLabel="Fermer"
+                onAction={() => setIsSuccessModalOpen(false)}
             />
         </div>
     );

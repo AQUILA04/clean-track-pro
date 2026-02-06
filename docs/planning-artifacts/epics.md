@@ -348,6 +348,25 @@ So that we can prioritize them.
 **Then** It is highlighted in Yellow
 **And** If the Due Date has passed, it is highlighted in Red
 
+### Story 5.4: Order Status History & Audit Trail [BACKLOG]
+
+As an Admin_Site,
+I want to track all status changes for orders with timestamps and user attribution,
+So that I can monitor workflow efficiency and maintain an audit trail.
+
+**Acceptance Criteria:**
+
+**Given** An order status is changed by a user
+**When** The status transition occurs (e.g., CREATED → IN_PROGRESS)
+**Then** A record is created in the order_status_history table with previous status, new status, user ID, and timestamp
+**And** I can view the complete history of status changes for any order
+**And** The system maintains data isolation per tenant using RLS policies
+
+**Technical Notes:**
+- Requires `order_status_history` table migration
+- Should be triggered automatically on order status updates
+- Enables detailed SLA analysis and workflow optimization
+
 ## Epic 6: Smart Storage & Delivery
 
 Organize finished orders into managed shelf slots and facilitate secure Handover/Delivery verification.

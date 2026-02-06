@@ -9,7 +9,9 @@ import { Order } from '../orders/entities/order.entity';
 import { OrderStatus } from '../orders/enums/order-status.enum';
 import { RlsService } from '../shared/database/rls/rls.service';
 import { OrderLookupResponse } from './dto/order-lookup.response';
-
+import * as fs from 'fs';
+import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class StorageService {
@@ -164,5 +166,32 @@ export class StorageService {
             await manager.save(Order, order);
         });
     }
-}
 
+    async uploadFile(file: Express.Multer.File): Promise<string> {
+        if (!file) {
+            throw new BadRequestException('No file uploaded');
+        }
+
+        // Ensure uploads directory exists
+        // Use absolute path relative to project root to avoid issues with dist/src vs src
+        const uploadDir = path.resolve(process.cwd(), 'uploads');
+
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        // Generate unique filename
+        const fileExt = path.extname(file.originalname);
+        const fileName = `${uuidv4()}${fileExt}`;
+        const filePath = path.join(uploadDir, fileName);
+
+        // Write file to disk
+        fs.writeFileSync(filePath, file.buffer);
+
+        // Return public URL (assuming static file serving is configured)
+        // For now, returning a relative path or a placeholder URL
+        // In production, this should be an S3 URL or similar
+        const baseUrl = process.env.API_URL || 'http://localhost:3000';
+        return `${baseUrl}/uploads/${fileName}`;
+    }
+}

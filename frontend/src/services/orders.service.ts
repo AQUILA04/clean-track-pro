@@ -40,11 +40,11 @@ export const OrdersService = {
         return response.data;
     },
 
-    async getDashboardStats(startDate?: string, endDate?: string, timezone?: string) {
+    async getDashboardStats(startDate?: string, endDate?: string, timezone?: string, siteId?: string) {
         const headers = await getAuthHeaders();
         const response = await axios.get(`${API_URL}/orders/stats/dashboard`, {
             headers,
-            params: { startDate, endDate, timezone },
+            params: { startDate, endDate, timezone, siteId },
             withCredentials: true,
         });
         return response.data;
@@ -55,6 +55,16 @@ export const OrdersService = {
         const response = await axios.get(`${API_URL}/orders`, {
             params: { page, limit, type },
             headers,
+            withCredentials: true,
+        });
+        return response.data;
+    },
+
+    async getWeeklyStats(siteId?: string) {
+        const headers = await getAuthHeaders();
+        const response = await axios.get(`${API_URL}/orders/stats/weekly`, {
+            headers,
+            params: { siteId },
             withCredentials: true,
         });
         return response.data;

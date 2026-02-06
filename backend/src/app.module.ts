@@ -15,6 +15,8 @@ import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
 import { StorageModule } from './storage/storage.module';
 import { SiteModule } from './sites/site.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join, resolve } from 'path';
 
 @Module({
   imports: [
@@ -38,13 +40,16 @@ import { SiteModule } from './sites/site.module';
       synchronize: process.env.TYPEORM_SYNC === 'true', // Default to false for production safety
       migrationsRun: true, // Automatically run migrations on startup
     }),
+    ServeStaticModule.forRoot({
+      rootPath: resolve(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+    }),
     KeycloakModule,
     TenantModule,
     UserModule,
     RlsModule,
     ClientModule,
     CatalogModule,
-    OrdersModule,
     OrdersModule,
     StorageModule,
     SiteModule,

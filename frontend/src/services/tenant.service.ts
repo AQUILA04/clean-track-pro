@@ -1,4 +1,6 @@
 
+import { getSession } from 'next-auth/react';
+
 export interface CreateTenantDto {
     name: string;
     subdomain: string;
@@ -25,8 +27,9 @@ export interface Tenant {
 }
 
 // Helper to get auth token
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('token'); // Assuming token is stored here
+const getAuthHeaders = async () => {
+    const session = await getSession();
+    const token = session?.accessToken;
     return {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
@@ -37,9 +40,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export const TenantService = {
     create: async (data: CreateTenantDto): Promise<Tenant> => {
+        const headers = await getAuthHeaders();
         const response = await fetch(`${API_URL}/tenants`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: headers,
             body: JSON.stringify(data),
         });
 
@@ -51,9 +55,10 @@ export const TenantService = {
     },
 
     updateBranding: async (updateTenantBrandingDto: UpdateTenantBrandingDto): Promise<Tenant> => {
+        const headers = await getAuthHeaders();
         const response = await fetch(`${API_URL}/tenants/me`, {
             method: 'PATCH',
-            headers: getAuthHeaders(),
+            headers: headers,
             body: JSON.stringify(updateTenantBrandingDto),
         });
 
@@ -66,9 +71,10 @@ export const TenantService = {
     },
 
     updateConfig: async (updateTenantConfigDto: UpdateTenantConfigDto): Promise<Tenant> => {
+        const headers = await getAuthHeaders();
         const response = await fetch(`${API_URL}/tenants/me/config`, {
             method: 'PATCH',
-            headers: getAuthHeaders(),
+            headers: headers,
             body: JSON.stringify(updateTenantConfigDto),
         });
 
@@ -81,9 +87,10 @@ export const TenantService = {
     },
 
     getCurrentTenant: async (): Promise<Tenant> => {
+        const headers = await getAuthHeaders();
         const response = await fetch(`${API_URL}/tenants/me`, {
             method: 'GET',
-            headers: getAuthHeaders(),
+            headers: headers,
         });
 
         if (!response.ok) {

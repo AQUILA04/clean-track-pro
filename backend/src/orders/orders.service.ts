@@ -141,7 +141,8 @@ export class OrdersService {
         tenantId: string,
         timezone: string = 'UTC',
         startDate?: string,
-        endDate?: string
+        endDate?: string,
+        siteId?: string
     ): Promise<DashboardStatsDto> {
         let startPeriod: Date;
         let endPeriod: Date;
@@ -161,31 +162,49 @@ export class OrdersService {
             endPeriod = fromZonedTime(endOfDayZoned, timezone);
         }
 
+        const whereClause: any = {
+            tenant_id: tenantId,
+            created_at: Between(startPeriod, endPeriod)
+        };
+
+        if (siteId) {
+            whereClause.site_id = siteId;
+        }
+
         // 1. Orders Today
         const ordersToday = await this.ordersRepository.count({
-            where: {
-                tenant_id: tenantId,
-                created_at: Between(startPeriod, endPeriod)
-            }
+            where: whereClause
         });
 
         // 2. Revenue Today
-        const revenueResult = await this.ordersRepository
+        const revenueQuery = this.ordersRepository
             .createQueryBuilder('order')
             .select('SUM(order.total_price)', 'total')
             .where('order.tenant_id = :tenantId', { tenantId })
-            .andWhere('order.created_at BETWEEN :start AND :end', { start: startPeriod, end: endPeriod })
-            .getRawOne();
+            .andWhere('order.created_at BETWEEN :start AND :end', { start: startPeriod, end: endPeriod });
 
+        if (siteId) {
+            revenueQuery.andWhere('order.site_id = :siteId', { siteId });
+        }
+
+        const revenueResult = await revenueQuery.getRawOne();
         const revenueToday = revenueResult && revenueResult.total ? parseFloat(revenueResult.total) : 0;
 
         // 3. Pending Orders (within the selected date range)
+        // Note: Logic for pending orders might need to be independent of date range if "Pending" means currently incomplete regardless of creation date.
+        // However, existing implementation filters by date. Keeping consistent.
+        const pendingWhereClause: any = {
+            tenant_id: tenantId,
+            status: In([OrderStatus.CREATED, OrderStatus.IN_PROGRESS, OrderStatus.READY]),
+            created_at: Between(startPeriod, endPeriod)
+        };
+
+        if (siteId) {
+            pendingWhereClause.site_id = siteId;
+        }
+
         const pendingOrders = await this.ordersRepository.count({
-            where: {
-                tenant_id: tenantId,
-                status: In([OrderStatus.CREATED, OrderStatus.IN_PROGRESS, OrderStatus.READY]),
-                created_at: Between(startPeriod, endPeriod)
-            }
+            where: pendingWhereClause
         });
 
         return {
@@ -193,6 +212,50 @@ export class OrdersService {
             revenueToday,
             pendingOrders
         };
+    }
+
+    async getWeeklyStats(tenantId: string, siteId?: string): Promise<any[]> {
+        // Get last 7 days
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 6); // 7 days inclusive
+
+        // Truncate to start of day if desired, but for graph we just need daily buckets
+        // Using common table expression or simple loop is overkill?
+        // Let's use TypeORM builder to group by date
+
+        const query = this.ordersRepository.createQueryBuilder('order')
+            .select("TO_CHAR(order.created_at, 'YYYY-MM-DD')", 'date')
+            .addSelect("SUM(order.total_price)", "revenue")
+            .addSelect("COUNT(order.id)", "orders")
+            .where('order.tenant_id = :tenantId', { tenantId })
+            .andWhere('order.created_at >= :startDate', { startDate })
+            .groupBy("TO_CHAR(order.created_at, 'YYYY-MM-DD')")
+            .orderBy('date', 'ASC');
+
+        if (siteId) {
+            query.andWhere('order.site_id = :siteId', { siteId });
+        }
+
+        const rawResults = await query.getRawMany();
+
+        // Fill in missing days
+        const stats = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
+            const dateStr = d.toISOString().split('T')[0];
+
+            const existing = rawResults.find(r => r.date === dateStr);
+
+            stats.push({
+                name: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'][d.getDay()], // Check localization?
+                revenue: existing ? parseFloat(existing.revenue) : 0,
+                orders: existing ? parseInt(existing.orders) : 0
+            });
+        }
+
+        return stats;
     }
 
     async findAll(
@@ -205,7 +268,7 @@ export class OrdersService {
 
         const query = this.ordersRepository.createQueryBuilder('order')
             .leftJoinAndSelect('order.items', 'items')
-            .leftJoinAndMapOne('order.client', 'clients', 'client', 'client.id = order.client_id')
+            .leftJoinAndMapOne('order.client', 'clients', 'client', 'client.id::text = order.client_id')
             .where('order.tenant_id = :tenantId', { tenantId });
 
         if (type === 'active') {
