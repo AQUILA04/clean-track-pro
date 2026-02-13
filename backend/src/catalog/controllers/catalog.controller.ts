@@ -1,14 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
 import { CatalogService } from '../services/catalog.service';
 import { CreateArticleTypeDto } from '../dto/create-article-type.dto';
 import { UpdateArticleTypeDto } from '../dto/update-article-type.dto';
 import { Roles, AuthenticatedUser, AuthGuard, RoleGuard } from 'nest-keycloak-connect';
 import { Response } from '../../shared/response/response.builder';
-
-// Mocking Roles and Auth for now if imports fail, but using standard structure.
-// I need to check how Auth is implemented. The plan mentioned protecting with @Roles(['ADMIN_TENANT']).
-// I will check `backend/src/shared/guards` if needed.
-// For now, I'll generate with standard assumptions and adjust if needed.
 
 @Controller('article-types')
 @UseGuards(AuthGuard, RoleGuard)
@@ -19,14 +14,9 @@ export class CatalogController {
     @Roles({ roles: ['realm:Admin_Tenant', 'realm:Superadmin'] })
     async create(@AuthenticatedUser() user: any, @Body() createDto: CreateArticleTypeDto) {
         const tenantId = user.tenant_id;
-
         if (!tenantId) {
-            // Superadmin might not have a tenant_id implies they should provide one in body? 
-            // Or better, restrict creation to Admin_Tenant for now as per story.
-            // Story says "As an Admin_Tenant".
             throw new Error('User has no tenant_id associated');
         }
-
         const data = await this.catalogService.create(tenantId, createDto);
         return Response.builder()
             .status(201)
@@ -37,12 +27,12 @@ export class CatalogController {
 
     @Get()
     @Roles({ roles: ['realm:Admin_Tenant', 'realm:User_Site', 'realm:Admin_Site', 'realm:Superadmin'] })
-    async findAll(@AuthenticatedUser() user: any) {
+    async findAll(@AuthenticatedUser() user: any, @Query('q') query?: string) {
         const tenantId = user.tenant_id;
         if (!tenantId) {
             throw new Error('User has no tenant_id associated');
         }
-        const data = await this.catalogService.findAll(tenantId);
+        const data = await this.catalogService.findAll(tenantId, query);
         return Response.builder()
             .status(200)
             .data(data)
@@ -65,6 +55,20 @@ export class CatalogController {
             .status(200)
             .message('Article type updated successfully')
             .data(data)
+            .build();
+    }
+
+    @Delete(':id')
+    @Roles({ roles: ['realm:Admin_Tenant', 'realm:Superadmin'] })
+    async delete(@AuthenticatedUser() user: any, @Param('id') id: string) {
+        const tenantId = user.tenant_id;
+        if (!tenantId) {
+            throw new Error('User has no tenant_id associated');
+        }
+        await this.catalogService.delete(id, tenantId);
+        return Response.builder()
+            .status(200)
+            .message('Article type deleted successfully')
             .build();
     }
 }

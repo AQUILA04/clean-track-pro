@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Shirt, Ticket, Bed, Briefcase, Gem, X, Plus } from 'lucide-react';
+import { ArticleType } from '@/services/article-type.service';
 import { CreateArticleTypeDto } from '@/types/article-type';
 
 interface AddArticleModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: CreateArticleTypeDto) => Promise<void>;
+    initialData?: ArticleType | null;
 }
 
 const AVAILABLE_ICONS = [
@@ -22,21 +24,33 @@ const AVAILABLE_ICONS = [
     { id: 'Tag', component: <div className="h-6 w-6 rounded-full border-2 border-current" /> },
 ];
 
-export const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, onClose, onSubmit }) => {
+export const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, onClose, onSubmit, initialData }) => {
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
     const [selectedIcon, setSelectedIcon] = useState('Shirt');
     const [loading, setLoading] = useState(false);
+
+    React.useEffect(() => {
+        if (isOpen && initialData) {
+            setName(initialData.name || initialData.label || '');
+            setCategory(initialData.category || '');
+            setSelectedIcon(initialData.icon || 'Shirt');
+        } else if (isOpen && !initialData) {
+            setName('');
+            setCategory('');
+            setSelectedIcon('Shirt');
+        }
+    }, [isOpen, initialData]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
             await onSubmit({
-                name,
+                label: name,
                 category,
                 icon: selectedIcon,
-                articleId: `ART-${Math.floor(Math.random() * 1000)}` // Mock ID generation
+                articleId: `ART-${Math.floor(Math.random() * 1000)}`
             });
             onClose();
             setName('');
@@ -57,12 +71,13 @@ export const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, onClos
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="h-8 w-8 bg-blue-600 rounded-md flex items-center justify-center text-white">
-                            {/* Placeholder for the L-shape icon in screenshot */}
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M4 4V20H20" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900">Ajouter un nouvel article</h2>
+                        <h2 className="text-xl font-bold text-gray-900">
+                            {initialData ? 'Modifier l\'article' : 'Ajouter un nouvel article'}
+                        </h2>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X className="h-6 w-6" />
@@ -137,7 +152,7 @@ export const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, onClos
                             type="submit"
                             isLoading={loading}
                         >
-                            Ajouter l'article
+                            {initialData ? 'Modifier' : 'Ajouter l\'article'}
                         </Button>
                     </div>
                 </form>

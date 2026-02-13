@@ -13,15 +13,15 @@ import { CreateArticleTypeDto } from '@/types/article-type';
 import { MOCK_STATS } from '@/data/mock-articles';
 import { UserFilters } from '@/components/users/UserFilters';
 import { ServiceTable, LaundryService } from '@/components/catalogue/ServiceTable';
-import { MOCK_SERVICES } from '@/data/mock-services';
 import { AddServiceModal } from '@/components/catalogue/AddServiceModal';
+import { laundryServiceService, LaundryServiceItem } from '@/services/laundry-service.service';
 import { PricingMatrix } from '@/components/catalogue/PricingMatrix';
 import { MOCK_PRICING, PricingEntry } from '@/data/mock-pricing';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { ExpressMode } from '@/components/catalogue/ExpressMode';
 
 
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 const TABS = [
     { id: 'types', label: "Types d'Articles" },
@@ -30,6 +30,15 @@ const TABS = [
     { id: 'express', label: 'Mode Express' },
 ];
 
+// Helper to map ServiceItem to Table format
+const mapServiceToTable = (s: LaundryServiceItem): LaundryService => ({
+    id: s.id,
+    name: s.name,
+    description: s.description,
+    icon: s.icon,
+    color: s.color,
+});
+
 export default function CataloguePage() {
     const [activeTab, setActiveTab] = useState('types');
 
@@ -37,10 +46,13 @@ export default function CataloguePage() {
     const [articles, setArticles] = useState<ArticleType[]>([]);
     const [articlesLoading, setArticlesLoading] = useState(true);
     const [isAddArticleModalOpen, setIsAddArticleModalOpen] = useState(false);
+    const [editingArticle, setEditingArticle] = useState<ArticleType | null>(null);
 
     // Services State
     const [services, setServices] = useState<LaundryService[]>([]);
+    const [servicesLoading, setServicesLoading] = useState(false);
     const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
+    const [editingService, setEditingService] = useState<LaundryService | null>(null);
 
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -142,12 +154,27 @@ export default function CataloguePage() {
         return null;
     };
 
-    const fetchArticles = async () => {
+
+    // Debounce search
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (activeTab === 'types') {
+                fetchArticles(searchQuery);
+            } else if (activeTab === 'services') {
+                fetchServices(searchQuery);
+            }
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery, activeTab]);
+
+    const fetchArticles = async (query?: string) => {
+        console.log('Fetching articles with query:', query);
         setArticlesLoading(true);
         try {
             const data = USE_MOCK_DATA
                 ? await articleTypeService.getMockArticles()
-                : await articleTypeService.findAll();
+                : await articleTypeService.findAll(query);
+            console.log('Fetched articles:', data);
             setArticles(data);
         } catch (error) {
             console.error('Failed to fetch articles:', error);
@@ -158,48 +185,119 @@ export default function CataloguePage() {
 
     // Load services logic
     useEffect(() => {
-        if (activeTab === 'services' && services.length === 0) {
-            setServices(MOCK_SERVICES);
+        if (activeTab === 'services') {
+            fetchServices(searchQuery);
         }
     }, [activeTab]);
 
-    useEffect(() => {
-        fetchArticles();
-    }, []);
+    const fetchServices = async (query?: string) => {
+        setServicesLoading(true);
+        try {
+            const data = await laundryServiceService.findAll(query);
+            setServices(data.map(mapServiceToTable));
+        } catch (error) {
+            console.error('Failed to fetch services:', error);
+        } finally {
+            setServicesLoading(false);
+        }
+    };
 
     const handleAddArticle = async (data: CreateArticleTypeDto) => {
-        const newArticle: ArticleType = {
-            id: Math.random().toString(),
-            name: (data as any).name || data.label,
-            articleId: (data as any).articleId || 'ART-XXX',
-            category: data.category,
-            icon: data.icon
-        };
-        setArticles([...articles, newArticle]);
+        try {
+            setArticlesLoading(true);
+            const newArticle = await articleTypeService.create(data);
+            setArticles([...articles, newArticle]);
+        } catch (error) {
+            console.error("Failed to create article type", error);
+        } finally {
+            setArticlesLoading(false);
+        }
     };
 
-    const handleAddService = async (data: { name: string; description: string }) => {
-        const newService: LaundryService = {
-            id: Math.random().toString(),
-            name: data.name,
-            description: data.description,
-            icon: 'Droplets',
-            color: 'bg-blue-50 text-blue-600'
-        };
-        setServices([...services, newService]);
+    const handleDeleteArticle = async (article: ArticleType, confirmed: boolean = false) => {
+        if (!confirmed) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) {
+                handleDeleteArticle(article, true);
+            }
+            return;
+        }
+
+        try {
+            setArticlesLoading(true);
+            await articleTypeService.delete(article.id);
+            setArticles(articles.filter(a => a.id !== article.id));
+        } catch (error) {
+            console.error("Failed to delete article", error);
+        } finally {
+            setArticlesLoading(false);
+        }
+    }
+
+    const handleSaveService = async (data: { name: string; description: string }) => {
+        try {
+            setServicesLoading(true);
+            if (editingService) {
+                const updated = await laundryServiceService.update(editingService.id, {
+                    label: data.name,
+                    description: data.description,
+                });
+                setServices(services.map(s => s.id === editingService.id ? mapServiceToTable(updated) : s));
+            } else {
+                const newService = await laundryServiceService.create({
+                    label: data.name,
+                    description: data.description,
+                });
+                setServices([...services, mapServiceToTable(newService)]);
+            }
+        } catch (error) {
+            console.error("Failed to save service", error);
+        } finally {
+            setServicesLoading(false);
+            setEditingService(null);
+            setIsAddServiceModalOpen(false); // Ensure modal closes
+        }
     };
 
-    const filteredArticles = articles.filter(article =>
-        article.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        article.articleId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        article.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const handleDeleteService = async (service: LaundryService) => {
+        if (confirm('Êtes-vous sûr de vouloir supprimer ce service ?')) {
+            try {
+                setServicesLoading(true);
+                await laundryServiceService.delete(service.id);
+                setServices(services.filter(s => s.id !== service.id));
+            } catch (error) {
+                console.error("Failed to delete service", error);
+            } finally {
+                setServicesLoading(false);
+            }
+        }
+    };
 
-    const filteredServices = services.filter(service =>
-        service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Articles are already filtered by backend
+    const filteredArticles = articles;
+    // Services also filtered by backend
+    const filteredServices = services;
 
+    const handleEditArticle = (article: ArticleType) => {
+        setEditingArticle(article);
+        setIsAddArticleModalOpen(true);
+    }
+
+    const handleSaveArticle = async (data: CreateArticleTypeDto) => {
+        if (editingArticle) {
+            try {
+                setArticlesLoading(true);
+                const updated = await articleTypeService.update(editingArticle.id, data);
+                setArticles(articles.map(a => a.id === editingArticle.id ? updated : a));
+            } catch (error) {
+                console.error("Failed to update article", error);
+            } finally {
+                setArticlesLoading(false);
+                setEditingArticle(null);
+            }
+        } else {
+            await handleAddArticle(data);
+        }
+    };
 
 
     return (
@@ -217,14 +315,22 @@ export default function CataloguePage() {
 
             <AddArticleModal
                 isOpen={isAddArticleModalOpen}
-                onClose={() => setIsAddArticleModalOpen(false)}
-                onSubmit={handleAddArticle}
+                onClose={() => {
+                    setIsAddArticleModalOpen(false);
+                    setEditingArticle(null);
+                }}
+                onSubmit={handleSaveArticle}
+                initialData={editingArticle}
             />
 
             <AddServiceModal
                 isOpen={isAddServiceModalOpen}
-                onClose={() => setIsAddServiceModalOpen(false)}
-                onSubmit={handleAddService}
+                onClose={() => {
+                    setIsAddServiceModalOpen(false);
+                    setEditingService(null);
+                }}
+                onSubmit={handleSaveService}
+                initialData={editingService}
             />
 
             {/* Header */}
@@ -265,8 +371,8 @@ export default function CataloguePage() {
                         <>
                             <ArticleTable
                                 articles={filteredArticles}
-                                onEdit={(article) => console.log('Edit', article)}
-                                onDelete={(article) => console.log('Delete', article)}
+                                onEdit={(article) => handleEditArticle(article)}
+                                onDelete={(article) => handleDeleteArticle(article)}
                             />
                             <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
                                 <div>
@@ -283,24 +389,33 @@ export default function CataloguePage() {
                 )}
 
                 {activeTab === 'services' && (
-                    <>
-                        <ServiceTable
-                            services={filteredServices}
-                            onEdit={(service) => console.log('Edit', service)}
-                            onDelete={(service) => console.log('Delete', service)}
-                        />
-                        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-                            <div>
-                                Affichage de {filteredServices.length} service{filteredServices.length !== 1 ? 's' : ''}
-                            </div>
+                    servicesLoading ? (
+                        <div className="flex justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                         </div>
-                    </>
+                    ) : (
+                        <>
+                            <ServiceTable
+                                services={services}
+                                onEdit={(service) => {
+                                    setEditingService(service);
+                                    setIsAddServiceModalOpen(true);
+                                }}
+                                onDelete={(service) => handleDeleteService(service)}
+                            />
+                            <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                                <div>
+                                    Affichage de {services.length} service{services.length !== 1 ? 's' : ''}
+                                </div>
+                            </div>
+                        </>
+                    )
                 )}
 
                 {activeTab === 'pricing' && (
                     <PricingMatrix
                         articles={filteredArticles}
-                        services={services.length > 0 ? services : MOCK_SERVICES}
+                        services={services}
                         pricingData={pricingState}
                         onPriceChange={handlePriceChange}
                         isDirty={isPricingDirty}
@@ -325,7 +440,15 @@ export default function CataloguePage() {
             </div>
 
             {/* Bottom Stats */}
-            {activeTab !== 'express' && <CatalogueStats stats={MOCK_STATS} />}
+            {activeTab !== 'express' && (
+                <CatalogueStats
+                    stats={{
+                        totalArticles: articles.length,
+                        categories: new Set(articles.map(a => a.category)).size,
+                        activeServices: services.length || MOCK_STATS.activeServices
+                    }}
+                />
+            )}
         </div>
     );
 }

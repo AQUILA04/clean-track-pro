@@ -15,13 +15,17 @@ const getAuthHeaders = async () => {
 };
 
 export const articleTypeService = {
-    async findAll(): Promise<ArticleType[]> {
+    async findAll(query?: string): Promise<ArticleType[]> {
         const headers = await getAuthHeaders();
         const response = await axios.get(`${API_URL}/article-types`, {
             headers,
+            params: { q: query },
             withCredentials: true, // If using cookies
         });
-        return response.data.data;
+        return response.data.data.map((item: any) => ({
+            ...item,
+            name: item.label,
+        }));
     },
 
     async create(data: CreateArticleTypeDto): Promise<ArticleType> {
@@ -30,7 +34,8 @@ export const articleTypeService = {
             headers,
             withCredentials: true,
         });
-        return response.data.data;
+        const item = response.data.data;
+        return { ...item, name: item.label };
     },
 
     async update(id: string, data: UpdateArticleTypeDto): Promise<ArticleType> {
@@ -39,7 +44,16 @@ export const articleTypeService = {
             headers,
             withCredentials: true,
         });
-        return response.data.data;
+        const item = response.data.data;
+        return { ...item, name: item.label };
+    },
+
+    async delete(id: string): Promise<void> {
+        const headers = await getAuthHeaders();
+        await axios.delete(`${API_URL}/article-types/${id}`, {
+            headers,
+            withCredentials: true,
+        });
     },
 
     async getMockArticles(): Promise<ArticleType[]> {

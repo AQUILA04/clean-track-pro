@@ -7,12 +7,25 @@ interface AddServiceModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: { name: string; description: string }) => Promise<void>;
+    initialData?: { name: string; description: string } | null;
 }
 
-export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClose, onSubmit }) => {
+export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClose, onSubmit, initialData }) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
+
+    React.useEffect(() => {
+        if (isOpen) {
+            if (initialData) {
+                setName(initialData.name);
+                setDescription(initialData.description);
+            } else {
+                setName('');
+                setDescription('');
+            }
+        }
+    }, [isOpen, initialData]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -20,6 +33,7 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClos
         try {
             await onSubmit({ name, description });
             onClose();
+            // Don't clear state immediately if potentially editing, but usually fine to clear as effect resets on open
             setName('');
             setDescription('');
         } catch (error) {
@@ -35,7 +49,9 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClos
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-[500px] p-6 relative">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Ajouter un service</h2>
+                    <h2 className="text-xl font-bold text-gray-900">
+                        {initialData ? 'Modifier le service' : 'Ajouter un service'}
+                    </h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X className="h-6 w-6" />
                     </button>
@@ -75,7 +91,7 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClos
                             type="submit"
                             isLoading={loading}
                         >
-                            Ajouter le service
+                            {initialData ? 'Enregistrer' : 'Ajouter le service'}
                         </Button>
                     </div>
                 </form>

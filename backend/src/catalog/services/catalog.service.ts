@@ -1,6 +1,6 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { ArticleType } from '../entities/article-type.entity';
 import { CreateArticleTypeDto } from '../dto/create-article-type.dto';
 import { UpdateArticleTypeDto } from '../dto/update-article-type.dto';
@@ -18,7 +18,7 @@ export class CatalogService {
         });
 
         if (existing) {
-            throw new ConflictException('Article type with this label already exists for this tenant');
+            throw new ConflictException('Article type with this label already exists');
         }
 
         const articleType = this.articleTypeRepository.create({
@@ -29,9 +29,27 @@ export class CatalogService {
         return this.articleTypeRepository.save(articleType);
     }
 
-    async findAll(tenantId: string): Promise<ArticleType[]> {
+    async findAll(tenantId: string, query?: string): Promise<ArticleType[]> {
+        const where: any = { tenant_id: tenantId };
+
+        if (query) {
+            where.label = ILike(`%${query}%`);
+            // To do OR in TypeORM with other conditions (kept from original snippet comment):
+            // where: [
+            //   { tenant_id: tenantId, label: ILike(`%${query}%`) },
+            //   { tenant_id: tenantId, category: ILike(`%${query}%`) }
+            // ]
+            return this.articleTypeRepository.find({
+                where: [
+                    { tenant_id: tenantId, label: ILike(`%${query}%`) },
+                    { tenant_id: tenantId, category: ILike(`%${query}%`) }
+                ],
+                order: { label: 'ASC' },
+            });
+        }
+
         return this.articleTypeRepository.find({
-            where: { tenant_id: tenantId },
+            where,
             order: { label: 'ASC' },
         });
     }
@@ -62,5 +80,10 @@ export class CatalogService {
 
         Object.assign(articleType, updateDto);
         return this.articleTypeRepository.save(articleType);
+    }
+
+    async delete(id: string, tenantId: string): Promise<void> {
+        const articleType = await this.findOne(id, tenantId);
+        await this.articleTypeRepository.remove(articleType);
     }
 }

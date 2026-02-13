@@ -1,6 +1,6 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { ServiceDefinition } from '../entities/service-definition.entity';
 import { CreateServiceDefinitionDto } from '../dto/create-service-definition.dto';
 import { UpdateServiceDefinitionDto } from '../dto/update-service-definition.dto';
@@ -29,9 +29,15 @@ export class ServiceDefinitionService {
         return this.serviceDefinitionRepository.save(service);
     }
 
-    async findAll(tenantId: string): Promise<ServiceDefinition[]> {
+    async findAll(tenantId: string, query?: string): Promise<ServiceDefinition[]> {
+        const where: any = { tenant_id: tenantId };
+
+        if (query) {
+            where.label = ILike(`%${query}%`);
+        }
+
         return this.serviceDefinitionRepository.find({
-            where: { tenant_id: tenantId },
+            where,
             order: { label: 'ASC' },
         });
     }
@@ -62,5 +68,13 @@ export class ServiceDefinitionService {
 
         Object.assign(service, updateDto);
         return this.serviceDefinitionRepository.save(service);
+    }
+
+    async delete(id: string, tenantId: string): Promise<void> {
+        const result = await this.serviceDefinitionRepository.delete({ id, tenant_id: tenantId });
+
+        if (result.affected === 0) {
+            throw new NotFoundException(`Service with ID ${id} not found`);
+        }
     }
 }

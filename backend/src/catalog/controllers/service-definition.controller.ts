@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
 import { ServiceDefinitionService } from '../services/service-definition.service';
 import { CreateServiceDefinitionDto } from '../dto/create-service-definition.dto';
 import { UpdateServiceDefinitionDto } from '../dto/update-service-definition.dto';
@@ -24,9 +24,9 @@ export class ServiceDefinitionController {
 
     @Get()
     @Roles({ roles: ['realm:Admin_Tenant', 'realm:User_Site', 'realm:Admin_Site', 'realm:Superadmin'] })
-    async findAll(@AuthenticatedUser() user: any) {
+    async findAll(@AuthenticatedUser() user: any, @Query('q') query?: string) {
         const tenantId = user.tenant_id;
-        const data = await this.serviceDefinitionService.findAll(tenantId);
+        const data = await this.serviceDefinitionService.findAll(tenantId, query);
         return Response.builder()
             .status(200)
             .data(data)
@@ -46,6 +46,17 @@ export class ServiceDefinitionController {
             .status(200)
             .message('Service updated successfully')
             .data(data)
+            .build();
+    }
+
+    @Delete(':id')
+    @Roles({ roles: ['realm:Admin_Tenant', 'realm:Superadmin'] })
+    async delete(@AuthenticatedUser() user: any, @Param('id') id: string) {
+        const tenantId = user.tenant_id;
+        await this.serviceDefinitionService.delete(id, tenantId);
+        return Response.builder()
+            .status(200)
+            .message('Service deleted successfully')
             .build();
     }
 }
