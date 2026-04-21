@@ -1,4 +1,4 @@
-import TenantCreateForm from '../../../../components/TenantCreateForm';
+import TenantCreateForm from '@/components/TenantCreateForm';
 
 export default function CreateTenantPage() {
     return (

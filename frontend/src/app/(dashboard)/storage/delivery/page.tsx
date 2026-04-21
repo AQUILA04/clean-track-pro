@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { StorageService } from '../../../services/storage.service';
-import { useToast } from '../../../components/ui/simple-toast';
-import { ScannerInput, ScannerInputHandle } from '../../../components/shared/ScannerInput';
-import { OrderDeliveryCard } from '../../../components/storage/OrderDeliveryCard';
+import { StorageService } from '@/services/storage.service';
+import { useToast } from '@/components/ui/simple-toast';
+import { ScannerInput, ScannerInputHandle } from '@/components/shared/ScannerInput';
+import { OrderDeliveryCard } from '@/components/storage/OrderDeliveryCard';
 import { useRouter } from 'next/navigation';
 
 export default function DeliveryPage() {

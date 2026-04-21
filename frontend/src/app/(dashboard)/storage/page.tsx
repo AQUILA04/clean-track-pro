@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { StorageService, StorageSlot, CreateStorageSlotDto } from '../../services/storage.service';
-import { StorageSlotList } from '../../components/storage/StorageSlotList';
-import { CreateSlotModal } from '../../components/storage/CreateSlotModal';
+import { StorageService, StorageSlot, CreateStorageSlotDto } from '@/services/storage.service';
+import { StorageSlotList } from '@/components/storage/StorageSlotList';
+import { CreateSlotModal } from '@/components/storage/CreateSlotModal';
 
 export default function StoragePage() {
     const { data: session } = useSession();

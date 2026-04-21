@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { ClientOmnibox } from '../../../components/clients/ClientOmnibox';
-import { ArticleGrid } from '../../../components/orders/ArticleGrid';
-import { OrderDraftSummary } from '../../../components/orders/OrderDraftSummary';
-import { OrderDraftProvider, useOrderDraft } from '../../../context/order-draft.context';
+import { ClientOmnibox } from '@/components/clients/ClientOmnibox';
+import { ArticleGrid } from '@/components/orders/ArticleGrid';
+import { OrderDraftSummary } from '@/components/orders/OrderDraftSummary';
+import { OrderDraftProvider, useOrderDraft } from '@/context/order-draft.context';
 
 function OrderPageContent() {
     const { setClient, clientId } = useOrderDraft();
