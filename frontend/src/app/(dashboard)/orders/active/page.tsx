@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { OrderTable } from '../../../../components/orders/OrderTable';
-import { OrdersService } from '../../../../services/orders.service';
+import { OrderTable } from '@/components/orders/OrderTable';
+import { OrdersService } from '@/services/orders.service';
 
 export default function ActiveOrdersPage() {
     const [orders, setOrders] = useState([]);
