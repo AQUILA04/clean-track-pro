@@ -1,0 +1,202 @@
+name: CleanTrack Pro CD Pipeline
+
+# This workflow runs after the CI workflow completes successfully.
+# It deploys to 'test' when CI ran on branch 'main', and to 'prod' when CI ran on branches matching 'prod/**'.
+# It also supports a manual 'promote' workflow_dispatch to promote the current test release to prod.
+
+on:
+  workflow_run:
+    workflows: ["CleanTrack Pro CI Pipeline"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        type: choice
+        required: true
+        default: promote
+        options:
+          - promote
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Resolve the last published image SHA for each component
+  # ---------------------------------------------------------------------------
+  resolve-images:
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       (github.event.workflow_run.head_branch == 'main' || startsWith(github.event.workflow_run.head_branch, 'prod/'))) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_image: ${{ steps.resolve.outputs.frontend_image }}
+      backend_image: ${{ steps.resolve.outputs.backend_image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Resolve last published image for each component
+        id: resolve
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          REGISTRY="ghcr.io"
+
+          echo "$GHCR_TOKEN" | docker login "$REGISTRY" -u "$GHCR_USERNAME" --password-stdin
+
+          git fetch origin main --depth=200 2>/dev/null || git fetch origin main 2>/dev/null || true
+
+          resolve_sha() {
+            local component="$1"
+            local image="$REGISTRY/$REPO_LOWER-$component"
+            local start_sha sha
+
+            for start_sha in "$HEAD_SHA" "origin/main" "main"; do
+              if ! git rev-parse --verify "${start_sha}^{commit}" >/dev/null 2>&1; then
+                continue
+              fi
+              echo "Searching $component image in history of $start_sha" >&2
+              while read -r sha; do
+                if docker manifest inspect "$image:$sha" > /dev/null 2>&1; then
+                  echo "Resolved $component from $start_sha history: $image:$sha" >&2
+                  echo "$image:$sha"
+                  return 0
+                fi
+              done < <(git log --format='%H' "$start_sha" | head -100)
+            done
+
+            echo "ERROR: No published image found for $component in the last 100 commits" >&2
+            return 1
+          }
+
+          FRONTEND_IMAGE=$(resolve_sha "frontend")
+          BACKEND_IMAGE=$(resolve_sha "backend")
+
+          echo "Resolved frontend: $FRONTEND_IMAGE"
+          echo "Resolved backend:  $BACKEND_IMAGE"
+
+          echo "frontend_image=$FRONTEND_IMAGE" >> "$GITHUB_OUTPUT"
+          echo "backend_image=$BACKEND_IMAGE"  >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------
+  # Deploy to TEST
+  # ---------------------------------------------------------------------------
+  deploy-test:
+    needs: resolve-images
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    name: Deploy to TEST after CI
+    environment: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        run: |
+          echo "$SSH_PRIVATE_KEY" > private_key
+          chmod 600 private_key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to test server
+        run: |
+          FRONTEND_IMAGE='${{ needs.resolve-images.outputs.frontend_image }}'
+          BACKEND_IMAGE='${{ needs.resolve-images.outputs.backend_image }}'
+          echo "Deploying $FRONTEND_IMAGE and $BACKEND_IMAGE to test"
+          ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.TEST_SERVER_USER }}@${{ secrets.TEST_SERVER_HOST }} \
+            "export GHCR_USERNAME='${{ secrets.GHCR_USERNAME }}' GHCR_TOKEN='${{ secrets.GHCR_TOKEN }}' \
+             && cd ${{ secrets.TEST_DEPLOY_PATH }} \
+             && ./deploy/deploy.sh test '$FRONTEND_IMAGE' '$BACKEND_IMAGE'"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f private_key
+
+  # ---------------------------------------------------------------------------
+  # Deploy to PROD
+  # ---------------------------------------------------------------------------
+  deploy-prod:
+    needs: resolve-images
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'prod/')
+    runs-on: ubuntu-latest
+    name: Deploy to PROD after CI
+    environment: prod
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        run: |
+          echo "$SSH_PRIVATE_KEY" > private_key
+          chmod 600 private_key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to prod server
+        run: |
+          FRONTEND_IMAGE='${{ needs.resolve-images.outputs.frontend_image }}'
+          BACKEND_IMAGE='${{ needs.resolve-images.outputs.backend_image }}'
+          echo "Deploying $FRONTEND_IMAGE and $BACKEND_IMAGE to prod"
+          ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} \
+            "export GHCR_USERNAME='${{ secrets.GHCR_USERNAME }}' GHCR_TOKEN='${{ secrets.GHCR_TOKEN }}' \
+             && cd ${{ secrets.PROD_DEPLOY_PATH }} \
+             && ./deploy/deploy.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE'"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f private_key
+
+  # ---------------------------------------------------------------------------
+  # Promote TEST → PROD (manual dispatch)
+  # ---------------------------------------------------------------------------
+  promote:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'promote'
+    runs-on: ubuntu-latest
+    name: Promote test -> prod
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        run: |
+          echo "$SSH_PRIVATE_KEY" > private_key
+          chmod 600 private_key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Promote current test release to prod
+        run: |
+          set -euo pipefail
+          TEST_HOST=${{ secrets.TEST_SERVER_HOST }}
+          TEST_USER=${{ secrets.TEST_SERVER_USER }}
+          PROD_HOST=${{ secrets.PROD_SERVER_HOST }}
+          PROD_USER=${{ secrets.PROD_SERVER_USER }}
+          PROD_PATH=${{ secrets.PROD_DEPLOY_PATH }}
+
+          echo "Fetching current test release file"
+          ssh -o StrictHostKeyChecking=no -i private_key "$TEST_USER@$TEST_HOST" "cat /opt/cleantrack/test/releases/test_current.txt" > release.txt
+          cat release.txt
+          FRONTEND_IMAGE=$(grep '^FRONTEND_IMAGE=' release.txt | cut -d= -f2-)
+          BACKEND_IMAGE=$(grep '^BACKEND_IMAGE=' release.txt | cut -d= -f2-)
+
+          if [ -z "$FRONTEND_IMAGE" ] || [ -z "$BACKEND_IMAGE" ]; then
+            echo "Could not determine images to promote" >&2
+            exit 2
+          fi
+
+          echo "Promoting FRONTEND_IMAGE=$FRONTEND_IMAGE BACKEND_IMAGE=$BACKEND_IMAGE to prod ($PROD_HOST)"
+          ssh -o StrictHostKeyChecking=no -i private_key "$PROD_USER@$PROD_HOST" \
+            "export GHCR_USERNAME='${{ secrets.GHCR_USERNAME }}' GHCR_TOKEN='${{ secrets.GHCR_TOKEN }}' \
+             && cd $PROD_PATH \
+             && ./deploy/deploy.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE'"
+
+      - name: Cleanup
+        if: always()
+        run: rm -f private_key release.txt

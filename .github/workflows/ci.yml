@@ -1,0 +1,140 @@
+name: CleanTrack Pro CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop, 'release/**', 'prod/**' ]
+  pull_request:
+    branches: [ main, develop, 'release/**' ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          frontend:
+            - 'frontend/**'
+          backend:
+            - 'backend/**'
+
+  build-backend:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set lowercase image name
+      run: |
+        echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm ci --legacy-peer-deps
+
+    - name: Run backend tests
+      working-directory: ./backend
+      run: npm run test
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend
+
+    - name: Build and push Backend Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:latest
+        labels: ${{ steps.meta.outputs.labels }}
+
+  build-frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set lowercase image name
+      run: |
+        echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
+
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci --legacy-peer-deps
+
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npm run test
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-frontend
+
+    - name: Build and push Frontend Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-frontend:${{ github.sha }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-frontend:latest
+        labels: ${{ steps.meta.outputs.labels }}
