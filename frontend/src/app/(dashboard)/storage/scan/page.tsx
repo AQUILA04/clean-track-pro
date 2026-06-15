@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { StorageService, StorageSlot, StorageSlotStatus } from '../../../services/storage.service';
-import { OrdersService } from '../../../services/orders.service';
-import { useToast } from '../../../components/ui/simple-toast';
-import { ScannerInput, ScannerInputHandle } from '../../../components/shared/ScannerInput';
+import { StorageService, StorageSlot, StorageSlotStatus } from '@/services/storage.service';
+import { OrdersService } from '@/services/orders.service';
+import { useToast } from '@/components/ui/simple-toast';
+import { ScannerInput, ScannerInputHandle } from '@/components/shared/ScannerInput';
 
 export default function StorageScannerPage() {
     const { data: session } = useSession();

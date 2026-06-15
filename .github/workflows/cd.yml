@@ -1,0 +1,284 @@
+name: CleanTrack Pro CD Pipeline
+
+# Ce workflow se déclenche après la CI.
+# - Branche main   → déploiement en TEST
+# - Branche prod/** → déploiement en PROD
+# - workflow_dispatch (promote) → promeut la release TEST en PROD
+#
+# Pattern de bootstrap automatique :
+#   Le CD se connecte en SSH et vérifie si /opt/cleantrack/init.sh existe.
+#   Si non → il le télécharge via curl depuis GitHub.
+#   Ensuite il exécute init.sh qui :
+#     - fait le setup du serveur si c'est la première fois
+#     - lance le déploiement dans tous les cas
+
+on:
+  workflow_run:
+    workflows: ["CleanTrack Pro CI Pipeline"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        type: choice
+        required: true
+        default: promote
+        options:
+          - promote
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Resolve the last published image SHA for each component
+  # ---------------------------------------------------------------------------
+  resolve-images:
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       (github.event.workflow_run.head_branch == 'main' || startsWith(github.event.workflow_run.head_branch, 'prod/'))) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_image: ${{ steps.resolve.outputs.frontend_image }}
+      backend_image: ${{ steps.resolve.outputs.backend_image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Resolve last published image for each component
+        id: resolve
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          REGISTRY="ghcr.io"
+
+          echo "$GHCR_TOKEN" | docker login "$REGISTRY" -u "$GHCR_USERNAME" --password-stdin
+
+          git fetch origin main --depth=200 2>/dev/null || git fetch origin main 2>/dev/null || true
+
+          resolve_sha() {
+            local component="$1"
+            local image="$REGISTRY/$REPO_LOWER-$component"
+            local start_sha sha
+
+            for start_sha in "$HEAD_SHA" "origin/main" "main"; do
+              if ! git rev-parse --verify "${start_sha}^{commit}" >/dev/null 2>&1; then
+                continue
+              fi
+              echo "Searching $component image in history of $start_sha" >&2
+              while read -r sha; do
+                if docker manifest inspect "$image:$sha" > /dev/null 2>&1; then
+                  echo "Resolved $component from $start_sha history: $image:$sha" >&2
+                  echo "$image:$sha"
+                  return 0
+                fi
+              done < <(git log --format='%H' "$start_sha" | head -100)
+            done
+
+            echo "ERROR: No published image found for $component in the last 100 commits" >&2
+            return 1
+          }
+
+          FRONTEND_IMAGE=$(resolve_sha "frontend")
+          BACKEND_IMAGE=$(resolve_sha "backend")
+
+          echo "Resolved frontend: $FRONTEND_IMAGE"
+          echo "Resolved backend:  $BACKEND_IMAGE"
+
+          echo "frontend_image=$FRONTEND_IMAGE" >> "$GITHUB_OUTPUT"
+          echo "backend_image=$BACKEND_IMAGE"   >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------
+  # Deploy to TEST
+  # ---------------------------------------------------------------------------
+  deploy-test:
+    needs: resolve-images
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    name: Deploy to TEST
+    environment: test
+    steps:
+      - name: Prepare SSH key
+        run: |
+          echo "$SSH_PRIVATE_KEY" > private_key
+          chmod 600 private_key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Bootstrap & Deploy to TEST server
+        run: |
+          set -euo pipefail
+          FRONTEND_IMAGE='${{ needs.resolve-images.outputs.frontend_image }}'
+          BACKEND_IMAGE='${{ needs.resolve-images.outputs.backend_image }}'
+          SERVER_USER='${{ secrets.TEST_SERVER_USER }}'
+          SERVER_HOST='${{ secrets.TEST_SERVER_HOST }}'
+
+          echo "Deploying $FRONTEND_IMAGE and $BACKEND_IMAGE to TEST ($SERVER_HOST)"
+
+          ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" bash << 'ENDSSH'
+          set -euo pipefail
+          INIT_SCRIPT="/opt/cleantrack/init.sh"
+
+          # Bootstrap: télécharger init.sh si absent
+          if [[ ! -f "$INIT_SCRIPT" ]]; then
+            echo ">>> init.sh not found. Downloading from GitHub..."
+            mkdir -p /opt/cleantrack
+            curl -sSL https://raw.githubusercontent.com/AQUILA04/clean-track-pro/main/deploy/init.sh \
+              -o "$INIT_SCRIPT"
+            chmod +x "$INIT_SCRIPT"
+            echo ">>> init.sh downloaded."
+          fi
+          ENDSSH
+
+          # Exécuter init.sh avec tous les secrets injectés via SSH
+          ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" \
+            "sudo /opt/cleantrack/init.sh test '$FRONTEND_IMAGE' '$BACKEND_IMAGE' \
+              --ghcr-username '${{ secrets.GHCR_USERNAME }}' \
+              --ghcr-token '${{ secrets.GHCR_TOKEN }}' \
+              --db-user '${{ secrets.DB_USER }}' \
+              --db-password '${{ secrets.TEST_DB_PASSWORD }}' \
+              --db-name '${{ secrets.TEST_DB_NAME }}' \
+              --keycloak-admin-password '${{ secrets.TEST_KEYCLOAK_ADMIN_PASSWORD }}' \
+              --keycloak-client-secret '${{ secrets.TEST_KEYCLOAK_CLIENT_SECRET }}' \
+              --nextauth-secret '${{ secrets.TEST_NEXTAUTH_SECRET }}' \
+              --app-hostname-test '${{ secrets.TEST_APP_HOSTNAME }}' \
+              --keycloak-hostname-test '${{ secrets.TEST_KEYCLOAK_HOSTNAME }}' \
+              --maildev-hostname '${{ secrets.TEST_MAILDEV_HOSTNAME }}'"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f private_key
+
+  # ---------------------------------------------------------------------------
+  # Deploy to PROD
+  # ---------------------------------------------------------------------------
+  deploy-prod:
+    needs: resolve-images
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'prod/')
+    runs-on: ubuntu-latest
+    name: Deploy to PROD
+    environment: prod
+    steps:
+      - name: Prepare SSH key
+        run: |
+          echo "$SSH_PRIVATE_KEY" > private_key
+          chmod 600 private_key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Bootstrap & Deploy to PROD server
+        run: |
+          set -euo pipefail
+          FRONTEND_IMAGE='${{ needs.resolve-images.outputs.frontend_image }}'
+          BACKEND_IMAGE='${{ needs.resolve-images.outputs.backend_image }}'
+          SERVER_USER='${{ secrets.PROD_SERVER_USER }}'
+          SERVER_HOST='${{ secrets.PROD_SERVER_HOST }}'
+
+          echo "Deploying $FRONTEND_IMAGE and $BACKEND_IMAGE to PROD ($SERVER_HOST)"
+
+          ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" bash << 'ENDSSH'
+          set -euo pipefail
+          INIT_SCRIPT="/opt/cleantrack/init.sh"
+
+          # Bootstrap: télécharger init.sh si absent
+          if [[ ! -f "$INIT_SCRIPT" ]]; then
+            echo ">>> init.sh not found. Downloading from GitHub..."
+            mkdir -p /opt/cleantrack
+            curl -sSL https://raw.githubusercontent.com/AQUILA04/clean-track-pro/main/deploy/init.sh \
+              -o "$INIT_SCRIPT"
+            chmod +x "$INIT_SCRIPT"
+            echo ">>> init.sh downloaded."
+          fi
+          ENDSSH
+
+          # Exécuter init.sh avec tous les secrets injectés via SSH
+          ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" \
+            "sudo /opt/cleantrack/init.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE' \
+              --ghcr-username '${{ secrets.GHCR_USERNAME }}' \
+              --ghcr-token '${{ secrets.GHCR_TOKEN }}' \
+              --db-user '${{ secrets.DB_USER }}' \
+              --db-password '${{ secrets.PROD_DB_PASSWORD }}' \
+              --db-name '${{ secrets.PROD_DB_NAME }}' \
+              --keycloak-admin-password '${{ secrets.PROD_KEYCLOAK_ADMIN_PASSWORD }}' \
+              --keycloak-client-secret '${{ secrets.PROD_KEYCLOAK_CLIENT_SECRET }}' \
+              --nextauth-secret '${{ secrets.PROD_NEXTAUTH_SECRET }}' \
+              --app-hostname-prod '${{ secrets.PROD_APP_HOSTNAME }}' \
+              --keycloak-hostname-prod '${{ secrets.PROD_KEYCLOAK_HOSTNAME }}'"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f private_key
+
+  # ---------------------------------------------------------------------------
+  # Promote TEST → PROD (manual dispatch)
+  # ---------------------------------------------------------------------------
+  promote:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'promote'
+    runs-on: ubuntu-latest
+    name: Promote TEST → PROD
+    steps:
+      - name: Prepare SSH key
+        run: |
+          echo "$SSH_PRIVATE_KEY" > private_key
+          chmod 600 private_key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Read current TEST release and promote to PROD
+        run: |
+          set -euo pipefail
+          TEST_USER='${{ secrets.TEST_SERVER_USER }}'
+          TEST_HOST='${{ secrets.TEST_SERVER_HOST }}'
+          PROD_USER='${{ secrets.PROD_SERVER_USER }}'
+          PROD_HOST='${{ secrets.PROD_SERVER_HOST }}'
+
+          echo "Fetching current TEST release..."
+          ssh -o StrictHostKeyChecking=no -i private_key "$TEST_USER@$TEST_HOST" \
+            "cat /opt/cleantrack/test/releases/test_current.txt" > release.txt
+          cat release.txt
+
+          FRONTEND_IMAGE=$(grep '^FRONTEND_IMAGE=' release.txt | cut -d= -f2-)
+          BACKEND_IMAGE=$(grep '^BACKEND_IMAGE=' release.txt | cut -d= -f2-)
+
+          if [[ -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" ]]; then
+            echo "Could not determine images to promote" >&2
+            exit 2
+          fi
+
+          echo "Promoting to PROD: frontend=$FRONTEND_IMAGE backend=$BACKEND_IMAGE"
+
+          # Bootstrap init.sh sur PROD si absent
+          ssh -o StrictHostKeyChecking=no -i private_key "$PROD_USER@$PROD_HOST" bash << 'ENDSSH'
+          set -euo pipefail
+          INIT_SCRIPT="/opt/cleantrack/init.sh"
+          if [[ ! -f "$INIT_SCRIPT" ]]; then
+            echo ">>> init.sh not found. Downloading from GitHub..."
+            mkdir -p /opt/cleantrack
+            curl -sSL https://raw.githubusercontent.com/AQUILA04/clean-track-pro/main/deploy/init.sh \
+              -o "$INIT_SCRIPT"
+            chmod +x "$INIT_SCRIPT"
+          fi
+          ENDSSH
+
+          # Exécuter init.sh sur PROD avec les images de TEST
+          ssh -o StrictHostKeyChecking=no -i private_key "$PROD_USER@$PROD_HOST" \
+            "sudo /opt/cleantrack/init.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE' \
+              --ghcr-username '${{ secrets.GHCR_USERNAME }}' \
+              --ghcr-token '${{ secrets.GHCR_TOKEN }}' \
+              --db-user '${{ secrets.DB_USER }}' \
+              --db-password '${{ secrets.PROD_DB_PASSWORD }}' \
+              --db-name '${{ secrets.PROD_DB_NAME }}' \
+              --keycloak-admin-password '${{ secrets.PROD_KEYCLOAK_ADMIN_PASSWORD }}' \
+              --keycloak-client-secret '${{ secrets.PROD_KEYCLOAK_CLIENT_SECRET }}' \
+              --nextauth-secret '${{ secrets.PROD_NEXTAUTH_SECRET }}' \
+              --app-hostname-prod '${{ secrets.PROD_APP_HOSTNAME }}' \
+              --keycloak-hostname-prod '${{ secrets.PROD_KEYCLOAK_HOSTNAME }}'"
+
+      - name: Cleanup
+        if: always()
+        run: rm -f private_key release.txt

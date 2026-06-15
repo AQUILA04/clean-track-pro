@@ -1,0 +1,130 @@
+# PROD stack — project name: cleantrack-prod
+# Domain: cleantrack.local (or public domain)
+# Start:  docker compose -f docker-compose.prod.yml --project-name cleantrack-prod up -d
+# Stop:   docker compose -f docker-compose.prod.yml --project-name cleantrack-prod down
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_prod_password}
+      POSTGRES_DB: ${DB_NAME:-cleantrack}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-cleantrack} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    networks:
+      - internal
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_prod_password}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-cleantrack}
+      KC_DB_USERNAME: ${DB_USER:-postgres}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-postgres_prod_password}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-keycloak.cleantrack.local}
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+    command: start --optimized --import-realm
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.cleantrack-prod-keycloak.rule=Host(`${KEYCLOAK_HOSTNAME:-keycloak.cleantrack.local}`)"
+      - "traefik.http.routers.cleantrack-prod-keycloak.entrypoints=websecure"
+      - "traefik.http.routers.cleantrack-prod-keycloak.tls.certresolver=letsencrypt"
+      - "traefik.http.services.cleantrack-prod-keycloak.loadbalancer.server.port=8080"
+
+  backend:
+    image: ${BACKEND_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres_prod_password}
+      DB_NAME: ${DB_NAME:-cleantrack}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KEYCLOAK_AUTH_SERVER_URL: ${KEYCLOAK_AUTH_SERVER_URL:-https://keycloak.cleantrack.local}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-cleantrack}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-cleantrack-client}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      # Keycloak Setup Admin Credentials (if run on container startup)
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_prod_password}
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      # Higher priority for API prefix
+      - "traefik.http.routers.cleantrack-prod-backend.rule=Host(`${APP_HOSTNAME:-cleantrack.local}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.cleantrack-prod-backend.entrypoints=websecure"
+      - "traefik.http.routers.cleantrack-prod-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.cleantrack-prod-backend.priority=10"
+      - "traefik.http.services.cleantrack-prod-backend.loadbalancer.server.port=3000"
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://cleantrack.local/api}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://cleantrack.local}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-cleantrack-client}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-https://keycloak.cleantrack.local/realms/cleantrack}
+    networks:
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      # Catch-all for main app domain
+      - "traefik.http.routers.cleantrack-prod-frontend.rule=Host(`${APP_HOSTNAME:-cleantrack.local}`)"
+      - "traefik.http.routers.cleantrack-prod-frontend.entrypoints=websecure"
+      - "traefik.http.routers.cleantrack-prod-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.cleantrack-prod-frontend.priority=1"
+      - "traefik.http.services.cleantrack-prod-frontend.loadbalancer.server.port=3001"
+
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+    name: cleantrack-prod-internal
+  traefik-public:
+    external: true

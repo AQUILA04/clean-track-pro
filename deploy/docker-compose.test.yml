@@ -1,0 +1,144 @@
+# TEST stack — project name: cleantrack-test
+# Domain: test.cleantrack.local
+# Start:  docker compose -f docker-compose.test.yml --project-name cleantrack-test up -d
+# Stop:   docker compose -f docker-compose.test.yml --project-name cleantrack-test down
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_test_password}
+      POSTGRES_DB: ${DB_NAME:-cleantrack_test}
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-cleantrack_test} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    networks:
+      - internal
+
+  maildev:
+    image: maildev/maildev
+    restart: unless-stopped
+    environment:
+      - MAILDEV_WEB_PORT=1080
+      - MAILDEV_SMTP_PORT=1025
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.cleantrack-test-maildev.rule=Host(`${MAILDEV_HOSTNAME:-maildev.test.cleantrack.local}`)"
+      - "traefik.http.routers.cleantrack-test-maildev.entrypoints=websecure"
+      - "traefik.http.routers.cleantrack-test-maildev.tls.certresolver=letsencrypt"
+      - "traefik.http.services.cleantrack-test-maildev.loadbalancer.server.port=1080"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_test_password}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-cleantrack_test}
+      KC_DB_USERNAME: ${DB_USER:-postgres}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-postgres_test_password}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-keycloak.test.cleantrack.local}
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+    command: start --optimized --import-realm
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.cleantrack-test-keycloak.rule=Host(`${KEYCLOAK_HOSTNAME:-keycloak.test.cleantrack.local}`)"
+      - "traefik.http.routers.cleantrack-test-keycloak.entrypoints=websecure"
+      - "traefik.http.routers.cleantrack-test-keycloak.tls.certresolver=letsencrypt"
+      - "traefik.http.services.cleantrack-test-keycloak.loadbalancer.server.port=8080"
+
+  backend:
+    image: ${BACKEND_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres_test_password}
+      DB_NAME: ${DB_NAME:-cleantrack_test}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KEYCLOAK_AUTH_SERVER_URL: ${KEYCLOAK_AUTH_SERVER_URL:-https://keycloak.test.cleantrack.local}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-cleantrack}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-cleantrack-client}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_test_password}
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.cleantrack-test-backend.rule=Host(`${APP_HOSTNAME:-test.cleantrack.local}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.cleantrack-test-backend.entrypoints=websecure"
+      - "traefik.http.routers.cleantrack-test-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.cleantrack-test-backend.priority=10"
+      - "traefik.http.services.cleantrack-test-backend.loadbalancer.server.port=3000"
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://test.cleantrack.local/api}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://test.cleantrack.local}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-cleantrack-client}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-https://keycloak.test.cleantrack.local/realms/cleantrack}
+    networks:
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.cleantrack-test-frontend.rule=Host(`${APP_HOSTNAME:-test.cleantrack.local}`)"
+      - "traefik.http.routers.cleantrack-test-frontend.entrypoints=websecure"
+      - "traefik.http.routers.cleantrack-test-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.cleantrack-test-frontend.priority=1"
+      - "traefik.http.services.cleantrack-test-frontend.loadbalancer.server.port=3001"
+
+volumes:
+  postgres_test_data:
+
+networks:
+  internal:
+    name: cleantrack-test-internal
+  traefik-public:
+    external: true
