@@ -4,7 +4,7 @@ import { History, Save, Download, Filter, Zap } from 'lucide-react';
 import { ArticleType } from '@/services/article-type.service';
 import { LaundryService } from '@/components/catalogue/ServiceTable';
 import { PricingGrid } from './PricingGrid';
-import { PricingEntry } from '@/data/mock-pricing';
+import { PricingEntry } from '@/types/pricing';
 
 interface PricingMatrixProps {
     articles: ArticleType[];

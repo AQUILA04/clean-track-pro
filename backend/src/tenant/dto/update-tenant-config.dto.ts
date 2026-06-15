@@ -8,4 +8,16 @@ export class UpdateTenantConfigDto {
     @IsNumber()
     @Min(1)
     express_sla_hours: number;
+
+    express_enabled: boolean;
+
+    currency: string;
+
+    weight_unit: string;
+
+    express_visibility: {
+        showTTC: boolean;
+        allowDiscounts: boolean;
+        showInventory: boolean;
+    };
 }

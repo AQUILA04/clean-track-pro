@@ -30,4 +30,16 @@ export const pricingService = {
         });
         return response.data.data;
     },
+
+    async delete(articleTypeId: string, serviceDefinitionId: string): Promise<void> {
+        const headers = await getAuthHeaders();
+        await axios.delete(`${API_URL}/catalog/prices`, {
+            headers,
+            params: {
+                article_type_id: articleTypeId,
+                service_definition_id: serviceDefinitionId
+            },
+            withCredentials: true,
+        });
+    },
 };

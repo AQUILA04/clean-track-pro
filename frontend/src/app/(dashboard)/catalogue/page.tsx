@@ -16,12 +16,13 @@ import { ServiceTable, LaundryService } from '@/components/catalogue/ServiceTabl
 import { AddServiceModal } from '@/components/catalogue/AddServiceModal';
 import { laundryServiceService, LaundryServiceItem } from '@/services/laundry-service.service';
 import { PricingMatrix } from '@/components/catalogue/PricingMatrix';
-import { MOCK_PRICING, PricingEntry } from '@/data/mock-pricing';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { ExpressMode } from '@/components/catalogue/ExpressMode';
+import { pricingService } from '@/services/pricing.service';
+import { PricingEntry } from '@/types/pricing';
+import { useToast } from '@/components/ui/simple-toast';
+import { TenantService } from '@/services/tenant.service';
 
-
-const USE_MOCK_DATA = false;
 
 const TABS = [
     { id: 'types', label: "Types d'Articles" },
@@ -40,6 +41,7 @@ const mapServiceToTable = (s: LaundryServiceItem): LaundryService => ({
 });
 
 export default function CataloguePage() {
+    const { toast } = useToast();
     const [activeTab, setActiveTab] = useState('types');
 
     // Articles State
@@ -56,10 +58,15 @@ export default function CataloguePage() {
 
     const [searchQuery, setSearchQuery] = useState('');
 
-    const [pricingState, setPricingState] = useState<PricingEntry[]>(MOCK_PRICING);
+    const [pricingState, setPricingState] = useState<PricingEntry[]>([]);
     // Deep copy for initial state comparison effectively
-    const [initialPricingState, setInitialPricingState] = useState<string>(JSON.stringify(MOCK_PRICING));
+    const [initialPricingState, setInitialPricingState] = useState<string>('[]');
     const [isPricingDirty, setIsPricingDirty] = useState(false);
+    const [pricingLoading, setPricingLoading] = useState(false);
+
+    // Express Mode State
+    const [expressConfig, setExpressConfig] = useState<any>(null);
+    const [expressLoading, setExpressLoading] = useState(false);
 
     const [confirmationModal, setConfirmationModal] = useState<{
         isOpen: boolean;
@@ -123,10 +130,86 @@ export default function CataloguePage() {
         });
     };
 
+    // Load pricing logic
+    useEffect(() => {
+        if (activeTab === 'pricing') {
+            fetchPrices();
+        }
+    }, [activeTab]);
+
+    const fetchPrices = async () => {
+        setPricingLoading(true);
+        try {
+            const prices = await pricingService.findAll();
+            // Map ServicePrice to PricingEntry
+            const mappedPrices: PricingEntry[] = prices.map(p => ({
+                articleId: p.article_type_id,
+                serviceId: p.service_definition_id,
+                price: typeof p.price === 'string' ? parseFloat(p.price) : p.price,
+            }));
+
+            setPricingState(mappedPrices);
+            setInitialPricingState(JSON.stringify(mappedPrices));
+        } catch (error) {
+            console.error('Failed to fetch prices:', error);
+        } finally {
+            setPricingLoading(false);
+        }
+    };
+
     const handleSavePricing = async () => {
-        console.log('Saving pricing data...', pricingState);
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setInitialPricingState(JSON.stringify(pricingState)); // Update initial state
+        if (!isPricingDirty) return;
+
+        try {
+            setPricingLoading(true);
+
+            // Find changed items by comparing with initial state
+            const initial: PricingEntry[] = JSON.parse(initialPricingState);
+
+            // Identify items to upsert
+            const itemsToUpsert = pricingState.filter(current => {
+                const init = initial.find(i => i.articleId === current.articleId && i.serviceId === current.serviceId);
+                // If it didn't exist and now has a value, or if value changed
+                if (!init) return current.price !== null;
+                return init.price !== current.price;
+            });
+
+            // Execute upserts in parallel (or sequential if one-by-one is safer, but parallel is faster)
+            // Ideally backend supports bulk update, but service has upsert single.
+            // We'll use Promise.all
+            const upsertPromises = itemsToUpsert.map(item => {
+                if (item.price === null) {
+                    return pricingService.delete(item.articleId, item.serviceId);
+                }
+
+                return pricingService.upsert({
+                    article_type_id: item.articleId,
+                    service_definition_id: item.serviceId,
+                    price: item.price
+                });
+            });
+
+            await Promise.all(upsertPromises);
+
+            // Refresh state
+            setInitialPricingState(JSON.stringify(pricingState));
+
+            toast({
+                title: 'Succès',
+                description: 'Tarifs mis à jour avec succès.',
+                variant: 'success',
+            });
+
+        } catch (error) {
+            console.error('Failed to save prices:', error);
+            toast({
+                title: 'Erreur',
+                description: 'Une erreur est survenue lors de la sauvegarde.',
+                variant: 'destructive',
+            });
+        } finally {
+            setPricingLoading(false);
+        }
     };
 
     // ... (rest of logic) ...
@@ -171,9 +254,7 @@ export default function CataloguePage() {
         console.log('Fetching articles with query:', query);
         setArticlesLoading(true);
         try {
-            const data = USE_MOCK_DATA
-                ? await articleTypeService.getMockArticles()
-                : await articleTypeService.findAll(query);
+            const data = await articleTypeService.findAll(query);
             console.log('Fetched articles:', data);
             setArticles(data);
         } catch (error) {
@@ -269,6 +350,62 @@ export default function CataloguePage() {
             } finally {
                 setServicesLoading(false);
             }
+        }
+    };
+
+    // Express Mode Logic
+    useEffect(() => {
+        if (activeTab === 'express') {
+            fetchExpressConfig();
+        }
+    }, [activeTab]);
+
+    const fetchExpressConfig = async () => {
+        setExpressLoading(true);
+        try {
+            const config = await TenantService.getCurrentTenant();
+            setExpressConfig(config);
+        } catch (error) {
+            console.error('Failed to fetch express config:', error);
+            toast({
+                title: 'Erreur',
+                description: 'Impossible de charger la configuration.',
+                variant: 'destructive',
+            });
+        } finally {
+            setExpressLoading(false);
+        }
+    };
+
+    const handleSaveExpressConfig = async (data: any) => {
+        setExpressLoading(true);
+        try {
+            await TenantService.updateConfig({
+                express_enabled: data.enabled,
+                express_multiplier: parseFloat(data.multiplier),
+                express_sla_hours: parseInt(data.guaranteedDelivery),
+                currency: data.currency,
+                weight_unit: data.weightUnit,
+                express_visibility: data.visibility
+            });
+
+            toast({
+                title: 'Succès',
+                description: 'Configuration mise à jour avec succès.',
+                variant: 'success',
+            });
+
+            // Refresh config
+            fetchExpressConfig();
+        } catch (error) {
+            console.error('Failed to save express config:', error);
+            toast({
+                title: 'Erreur',
+                description: 'Erreur lors de la sauvegarde.',
+                variant: 'destructive',
+            });
+        } finally {
+            setExpressLoading(false);
         }
     };
 
@@ -423,13 +560,30 @@ export default function CataloguePage() {
                     />
                 )}
 
+
+
                 {activeTab === 'express' && (
-                    <ExpressMode
-                        onSave={async (data) => {
-                            console.log('Saving express settings:', data);
-                            await new Promise(resolve => setTimeout(resolve, 800));
-                        }}
-                    />
+                    expressLoading ? (
+                        <div className="flex justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    ) : (
+                        <ExpressMode
+                            initialData={expressConfig ? {
+                                enabled: expressConfig.express_enabled,
+                                multiplier: expressConfig.express_multiplier?.toString() || '1.5',
+                                guaranteedDelivery: expressConfig.express_sla_hours?.toString() || '24',
+                                currency: expressConfig.currency || 'Euro (€)',
+                                weightUnit: expressConfig.weight_unit || 'Kilogrammes (kg)',
+                                visibility: expressConfig.express_visibility || {
+                                    showTTC: true,
+                                    allowDiscounts: true,
+                                    showInventory: false
+                                }
+                            } : undefined}
+                            onSave={handleSaveExpressConfig}
+                        />
+                    )
                 )}
 
                 {activeTab !== 'types' && activeTab !== 'services' && activeTab !== 'pricing' && activeTab !== 'express' && (

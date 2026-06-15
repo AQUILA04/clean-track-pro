@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, UseGuards, Query } from '@nestjs/common';
 import { PricingService } from '../services/pricing.service';
 import { UpsertServicePriceDto } from '../dto/upsert-service-price.dto';
 import { Roles, AuthenticatedUser, AuthGuard, RoleGuard } from 'nest-keycloak-connect';
@@ -29,6 +29,21 @@ export class PricingController {
         return Response.builder()
             .status(200)
             .data(data)
+            .build();
+    }
+
+    @Delete()
+    @Roles({ roles: ['realm:Admin_Tenant', 'realm:Superadmin'] })
+    async delete(
+        @AuthenticatedUser() user: any,
+        @Query('article_type_id') articleTypeId: string,
+        @Query('service_definition_id') serviceDefinitionId: string
+    ) {
+        const tenantId = user.tenant_id;
+        await this.pricingService.delete(tenantId, articleTypeId, serviceDefinitionId);
+        return Response.builder()
+            .status(200)
+            .message('Price deleted successfully')
             .build();
     }
 }

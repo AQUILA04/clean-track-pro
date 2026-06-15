@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/Switch';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -35,6 +35,12 @@ const DEFAULT_DATA = {
 
 export const ExpressMode: React.FC<ExpressModeProps> = ({ initialData = DEFAULT_DATA, onSave }) => {
     const [data, setData] = useState(initialData);
+
+    useEffect(() => {
+        if (initialData) {
+            setData(initialData);
+        }
+    }, [initialData]);
 
     const handleMultiplierChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setData({ ...data, multiplier: e.target.value });

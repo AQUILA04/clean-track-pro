@@ -14,6 +14,14 @@ export interface UpdateTenantBrandingDto {
 export interface UpdateTenantConfigDto {
     express_multiplier: number;
     express_sla_hours: number;
+    express_enabled: boolean;
+    currency: string;
+    weight_unit: string;
+    express_visibility: {
+        showTTC: boolean;
+        allowDiscounts: boolean;
+        showInventory: boolean;
+    };
 }
 
 export interface Tenant {
@@ -23,6 +31,14 @@ export interface Tenant {
     logoUrl?: string;
     express_multiplier: number;
     express_sla_hours: number;
+    express_enabled: boolean;
+    currency: string;
+    weight_unit: string;
+    express_visibility: {
+        showTTC: boolean;
+        allowDiscounts: boolean;
+        showInventory: boolean;
+    };
     created_at: string;
 }
 
@@ -94,7 +110,9 @@ export const TenantService = {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to fetch tenant configuration');
+            const errorText = await response.text();
+            console.error('Fetch tenant failed:', response.status, errorText);
+            throw new Error(`Failed to fetch tenant configuration: ${response.status} ${errorText}`);
         }
 
         const res = await response.json();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArticleType } from '@/services/article-type.service';
 import { LaundryService } from '@/components/catalogue/ServiceTable';
-import { PricingEntry } from '@/data/mock-pricing';
+import { PricingEntry } from '@/types/pricing';
 import { Shirt, Ticket, Bed, Briefcase, Gem, Droplets, Wind, SprayCan, Scissors } from 'lucide-react';
 
 interface PricingGridProps {
@@ -92,23 +92,15 @@ export const PricingGrid: React.FC<PricingGridProps> = ({ articles, services, in
                                 return (
                                     <td key={service.id} className="px-4 py-4 whitespace-nowrap text-center">
                                         <div className="relative flex items-center justify-center group">
-                                            {price !== null ? (
-                                                <>
-                                                    <span className="text-gray-400 text-sm absolute left-6">€</span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        className="block w-24 pl-6 pr-2 py-1.5 text-sm font-bold text-gray-900 border-0 border-b border-transparent bg-transparent text-center focus:ring-0 focus:border-primary hover:bg-gray-50 rounded transition-colors"
-                                                        value={price}
-                                                        onChange={(e) => handleInputChange(article.id, service.id, e.target.value)}
-                                                    />
-                                                </>
-                                            ) : (
-                                                <div className="text-gray-300 text-xs font-medium py-2">
-                                                    N/A
-                                                    <div className="h-px w-4 bg-gray-300 mx-auto mt-0.5"></div>
-                                                </div>
-                                            )}
+                                            <span className={`text-gray-400 text-sm absolute left-6 ${price === null ? 'opacity-30' : ''}`}>€</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                className={`block w-24 pl-6 pr-2 py-1.5 text-sm font-bold text-gray-900 border-0 border-b border-transparent bg-transparent text-center focus:ring-0 focus:border-primary hover:bg-gray-50 rounded transition-colors ${price === null ? 'text-gray-400' : ''}`}
+                                                value={price ?? ''}
+                                                placeholder="-"
+                                                onChange={(e) => handleInputChange(article.id, service.id, e.target.value)}
+                                            />
                                         </div>
                                     </td>
                                 );

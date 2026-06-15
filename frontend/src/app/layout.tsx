@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 
 import NextAuthProvider from "@/context/NextAuthProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { ToastProvider } from "@/components/ui/simple-toast";
 
 export default function RootLayout({
   children,
@@ -32,7 +33,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <ToastProvider>
+              {children}
+            </ToastProvider>
           </ThemeProvider>
         </NextAuthProvider>
       </body>

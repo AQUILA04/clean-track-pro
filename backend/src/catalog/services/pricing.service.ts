@@ -61,4 +61,12 @@ export class PricingService {
 
         return Number(priceDef.price);
     }
+
+    async delete(tenantId: string, articleTypeId: string, serviceDefinitionId: string): Promise<void> {
+        await this.servicePriceRepository.delete({
+            tenant_id: tenantId,
+            article_type_id: articleTypeId,
+            service_definition_id: serviceDefinitionId
+        });
+    }
 }

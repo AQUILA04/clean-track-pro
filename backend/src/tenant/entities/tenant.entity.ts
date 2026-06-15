@@ -17,6 +17,22 @@ export class Tenant {
   @Column({ type: 'int', default: 24 })
   express_sla_hours: number;
 
+  @Column({ type: 'boolean', default: true })
+  express_enabled: boolean;
+
+  @Column({ default: 'Euro (€)' })
+  currency: string;
+
+  @Column({ default: 'Kilogrammes (kg)' })
+  weight_unit: string;
+
+  @Column({ type: 'jsonb', default: { showTTC: true, allowDiscounts: true, showInventory: false } })
+  express_visibility: {
+    showTTC: boolean;
+    allowDiscounts: boolean;
+    showInventory: boolean;
+  };
+
   @CreateDateColumn()
   created_at: Date;
 
