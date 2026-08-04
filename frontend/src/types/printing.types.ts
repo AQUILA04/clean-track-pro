@@ -3,11 +3,16 @@ export interface PrintableOrder {
         tenantName: string;
         siteName: string;
         date: string; // ISO or Locale String
+        logoUrl?: string | null;
+        address?: string | null;
+        legalId?: string | null;
+        vatNumber?: string | null;
     };
     client: {
         name: string;
         phone: string;
-        qrCodeValue: string; // The UUID
+        qrCodeValue: string; // The UUID (QR content)
+        reference?: string | null; // Human-readable REF-…
     };
     items: Array<{
         label: string;
@@ -19,5 +24,7 @@ export interface PrintableOrder {
         totalPrice: number;
         currency: string;
         dueDate: string;
+        amountPaid?: number;
+        balanceDue?: number;
     };
 }

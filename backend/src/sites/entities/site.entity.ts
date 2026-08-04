@@ -9,6 +9,10 @@ export class Site {
     @Column({ type: 'uuid' })
     tenant_id: string;
 
+    /** Sequential agency code within a tenant (1–99), used in order references. */
+    @Column({ type: 'smallint' })
+    code: number;
+
     @Column()
     name: string;
 

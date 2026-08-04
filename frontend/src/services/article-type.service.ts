@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { CreateArticleTypeDto, UpdateArticleTypeDto } from '../types/article-type';
 import { MOCK_ARTICLES } from '../data/mock-articles';
+import type { ArticleType } from '../types/article-type';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'; // Adjust based on env
 
@@ -65,10 +66,4 @@ export const articleTypeService = {
     }
 };
 
-export interface ArticleType {
-    id: string;
-    name: string;
-    articleId: string; // Display ID e.g. ART-001
-    category: string;
-    icon?: string;
-}
+export type { ArticleType } from '../types/article-type';

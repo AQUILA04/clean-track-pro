@@ -5,6 +5,7 @@ const KEYCLOAK_ADMIN = process.env.KEYCLOAK_ADMIN || 'admin';
 const KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin';
 const REALM_NAME = process.env.KEYCLOAK_REALM || 'cleantrack';
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || 'cleantrack-client';
+const CLEANTRACK_THEME = 'cleantrack-pro';
 
 const requiredEnvVars = [
     { name: 'KEYCLOAK_URL', val: KEYCLOAK_URL },
@@ -53,12 +54,32 @@ async function setupKeycloak() {
                 realm: REALM_NAME,
                 enabled: true,
                 displayName: 'CleanTrack Pro',
+                loginTheme: CLEANTRACK_THEME,
+                accountTheme: CLEANTRACK_THEME,
+                emailTheme: CLEANTRACK_THEME,
+                internationalizationEnabled: true,
+                supportedLocales: ['fr', 'en'],
+                defaultLocale: 'fr',
             });
             console.log(`✅ Created realm '${REALM_NAME}'`);
         }
 
         // Switch to the new realm
         kcAdminClient.setConfig({ realmName: REALM_NAME });
+
+        await kcAdminClient.realms.update(
+            { realm: REALM_NAME },
+            {
+                displayName: 'CleanTrack Pro',
+                loginTheme: CLEANTRACK_THEME,
+                accountTheme: CLEANTRACK_THEME,
+                emailTheme: CLEANTRACK_THEME,
+                internationalizationEnabled: true,
+                supportedLocales: ['fr', 'en'],
+                defaultLocale: 'fr',
+            },
+        );
+        console.log(`✅ Theme '${CLEANTRACK_THEME}' applied to realm '${REALM_NAME}'`);
 
         // Create client
         const clients = await kcAdminClient.clients.find({ clientId: CLIENT_ID });
@@ -77,14 +98,62 @@ async function setupKeycloak() {
                 serviceAccountsEnabled: true,
                 redirectUris: [
                     'http://localhost:3000/*',
+                    'http://localhost:3000/auth/signin',
                     'http://localhost:3000/api/auth/callback/keycloak',
+                    'http://localhost:3001/*',
+                    'http://localhost:3001/auth/signin',
+                    'http://localhost:3001/api/auth/callback/keycloak',
                 ],
-                webOrigins: ['http://localhost:3000'],
+                webOrigins: ['http://localhost:3000', 'http://localhost:3001'],
                 protocol: 'openid-connect',
+                rootUrl: 'http://localhost:3001',
+                baseUrl: 'http://localhost:3001/auth/signin',
+                attributes: {
+                    'post.logout.redirect.uris': [
+                        'http://localhost:3000/',
+                        'http://localhost:3000/*',
+                        'http://localhost:3001/',
+                        'http://localhost:3001/*',
+                    ].join('##'),
+                },
             });
             clientUuid = client.id;
             console.log(`✅ Created client '${CLIENT_ID}'`);
         }
+
+        const existingClient = await kcAdminClient.clients.findOne({ id: clientUuid });
+        await kcAdminClient.clients.update(
+            { id: clientUuid },
+            {
+                ...existingClient,
+                rootUrl: 'http://localhost:3001',
+                baseUrl: 'http://localhost:3001/auth/signin',
+                redirectUris: Array.from(
+                    new Set([
+                        ...(existingClient?.redirectUris ?? []),
+                        'http://localhost:3000/*',
+                        'http://localhost:3000/auth/signin',
+                        'http://localhost:3000/api/auth/callback/keycloak',
+                        'http://localhost:3001/*',
+                        'http://localhost:3001/auth/signin',
+                        'http://localhost:3001/api/auth/callback/keycloak',
+                    ]),
+                ),
+                webOrigins: Array.from(
+                    new Set([...(existingClient?.webOrigins ?? []), 'http://localhost:3000', 'http://localhost:3001']),
+                ),
+                attributes: {
+                    ...(existingClient?.attributes ?? {}),
+                    'post.logout.redirect.uris': [
+                        'http://localhost:3000/',
+                        'http://localhost:3000/*',
+                        'http://localhost:3001/',
+                        'http://localhost:3001/*',
+                    ].join('##'),
+                },
+            },
+        );
+        console.log(`✅ Post-logout redirect URIs configured for client '${CLIENT_ID}'`);
 
         // Create protocol mappers for tenant_id and site_ids
         const mappers = await kcAdminClient.clients.listProtocolMappers({
@@ -139,8 +208,29 @@ async function setupKeycloak() {
             console.log('✅ Created site_ids mapper');
         }
 
+        const roleMapper = mappers.find((m: any) => m.name === 'role');
+        if (!roleMapper) {
+            await kcAdminClient.clients.addProtocolMapper(
+                { id: clientUuid },
+                {
+                    name: 'role',
+                    protocol: 'openid-connect',
+                    protocolMapper: 'oidc-usermodel-attribute-mapper',
+                    config: {
+                        'user.attribute': 'role',
+                        'claim.name': 'role',
+                        'jsonType.label': 'String',
+                        'id.token.claim': 'true',
+                        'access.token.claim': 'true',
+                        'userinfo.token.claim': 'true',
+                    },
+                }
+            );
+            console.log('✅ Created role mapper');
+        }
+
         // Create roles
-        const roles = ['Superadmin', 'Admin_Tenant', 'Admin_Site', 'User_Site'];
+        const roles = ['Superadmin', 'Admin_Tenant', 'Admin_Site', 'User_Site', 'Livreur'];
         for (const roleName of roles) {
             try {
                 await kcAdminClient.roles.findOneByName({ name: roleName });

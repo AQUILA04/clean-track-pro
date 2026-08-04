@@ -22,6 +22,8 @@ import { pricingService } from '@/services/pricing.service';
 import { PricingEntry } from '@/types/pricing';
 import { useToast } from '@/components/ui/simple-toast';
 import { TenantService } from '@/services/tenant.service';
+import { DEFAULT_TENANT_CURRENCY } from '@/lib/currencies';
+import { useTenantConfig } from '@/context/tenant-config.context';
 
 
 const TABS = [
@@ -42,6 +44,7 @@ const mapServiceToTable = (s: LaundryServiceItem): LaundryService => ({
 
 export default function CataloguePage() {
     const { toast } = useToast();
+    const { setCurrency, refresh: refreshTenantConfig } = useTenantConfig();
     const [activeTab, setActiveTab] = useState('types');
 
     // Articles State
@@ -75,6 +78,12 @@ export default function CataloguePage() {
         isOpen: false,
         pendingTab: null
     });
+
+    const [deleteConfirm, setDeleteConfirm] = useState<{
+        type: 'article' | 'service';
+        id: string;
+        name: string;
+    } | null>(null);
 
     useEffect(() => {
         setIsPricingDirty(JSON.stringify(pricingState) !== initialPricingState);
@@ -295,24 +304,36 @@ export default function CataloguePage() {
         }
     };
 
-    const handleDeleteArticle = async (article: ArticleType, confirmed: boolean = false) => {
-        if (!confirmed) {
-            if (confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) {
-                handleDeleteArticle(article, true);
-            }
-            return;
-        }
+    const handleDeleteArticle = async (article: ArticleType) => {
+        setDeleteConfirm({ type: 'article', id: article.id, name: article.label });
+    };
+
+    const handleDeleteService = async (service: LaundryService) => {
+        setDeleteConfirm({ type: 'service', id: service.id, name: service.name });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirm) return;
+        const pending = deleteConfirm;
+        setDeleteConfirm(null);
 
         try {
-            setArticlesLoading(true);
-            await articleTypeService.delete(article.id);
-            setArticles(articles.filter(a => a.id !== article.id));
+            if (pending.type === 'article') {
+                setArticlesLoading(true);
+                await articleTypeService.delete(pending.id);
+                setArticles((prev) => prev.filter((a) => a.id !== pending.id));
+            } else {
+                setServicesLoading(true);
+                await laundryServiceService.delete(pending.id);
+                setServices((prev) => prev.filter((s) => s.id !== pending.id));
+            }
         } catch (error) {
-            console.error("Failed to delete article", error);
+            console.error(`Failed to delete ${pending.type}`, error);
         } finally {
-            setArticlesLoading(false);
+            if (pending.type === 'article') setArticlesLoading(false);
+            else setServicesLoading(false);
         }
-    }
+    };
 
     const handleSaveService = async (data: { name: string; description: string }) => {
         try {
@@ -336,20 +357,6 @@ export default function CataloguePage() {
             setServicesLoading(false);
             setEditingService(null);
             setIsAddServiceModalOpen(false); // Ensure modal closes
-        }
-    };
-
-    const handleDeleteService = async (service: LaundryService) => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer ce service ?')) {
-            try {
-                setServicesLoading(true);
-                await laundryServiceService.delete(service.id);
-                setServices(services.filter(s => s.id !== service.id));
-            } catch (error) {
-                console.error("Failed to delete service", error);
-            } finally {
-                setServicesLoading(false);
-            }
         }
     };
 
@@ -395,6 +402,8 @@ export default function CataloguePage() {
                 variant: 'success',
             });
 
+            setCurrency(data.currency);
+            await refreshTenantConfig();
             // Refresh config
             fetchExpressConfig();
         } catch (error) {
@@ -450,6 +459,25 @@ export default function CataloguePage() {
                 variant="warning"
             />
 
+            <ConfirmationModal
+                isOpen={Boolean(deleteConfirm)}
+                onClose={() => setDeleteConfirm(null)}
+                onConfirm={confirmDelete}
+                title={
+                    deleteConfirm?.type === 'service'
+                        ? 'Supprimer ce service ?'
+                        : 'Supprimer cet article ?'
+                }
+                message={
+                    deleteConfirm
+                        ? `« ${deleteConfirm.name} » sera retiré définitivement du catalogue.`
+                        : ''
+                }
+                confirmLabel="Supprimer"
+                cancelLabel="Annuler"
+                variant="danger"
+            />
+
             <AddArticleModal
                 isOpen={isAddArticleModalOpen}
                 onClose={() => {
@@ -473,13 +501,13 @@ export default function CataloguePage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Gestion du Catalogue</h1>
-                    <p className="text-gray-500 mt-1">Gérez les types d'articles et les catégories de votre réseau de blanchisserie.</p>
+                    <h1 className="text-2xl font-bold text-foreground">Gestion du Catalogue</h1>
+                    <p className="text-muted-foreground mt-1">Gérez les types d'articles et les catégories de votre réseau de blanchisserie.</p>
                 </div>
                 {renderActionButtons()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
                 <CatalogueTabs
                     tabs={TABS}
                     activeTab={activeTab}
@@ -492,6 +520,7 @@ export default function CataloguePage() {
                         <UserFilters
                             searchQuery={searchQuery}
                             onSearchChange={setSearchQuery}
+                            searchPlaceholder="Rechercher un article ou un service..."
                             onFilterClick={() => { }}
                             onExportClick={() => { }}
                         />
@@ -511,14 +540,14 @@ export default function CataloguePage() {
                                 onEdit={(article) => handleEditArticle(article)}
                                 onDelete={(article) => handleDeleteArticle(article)}
                             />
-                            <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                            <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
                                 <div>
                                     Affichage de {filteredArticles.length} article{filteredArticles.length !== 1 ? 's' : ''}
                                 </div>
                                 <div className="flex gap-2">
-                                    <button className="p-1 rounded hover:bg-gray-100" disabled>&lt;</button>
+                                    <button className="p-1 rounded hover:bg-muted" disabled>&lt;</button>
                                     <button className="px-3 py-1 bg-primary text-white rounded-md">1</button>
-                                    <button className="p-1 rounded hover:bg-gray-100">&gt;</button>
+                                    <button className="p-1 rounded hover:bg-muted">&gt;</button>
                                 </div>
                             </div>
                         </>
@@ -540,7 +569,7 @@ export default function CataloguePage() {
                                 }}
                                 onDelete={(service) => handleDeleteService(service)}
                             />
-                            <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                            <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
                                 <div>
                                     Affichage de {services.length} service{services.length !== 1 ? 's' : ''}
                                 </div>
@@ -573,7 +602,7 @@ export default function CataloguePage() {
                                 enabled: expressConfig.express_enabled,
                                 multiplier: expressConfig.express_multiplier?.toString() || '1.5',
                                 guaranteedDelivery: expressConfig.express_sla_hours?.toString() || '24',
-                                currency: expressConfig.currency || 'Euro (€)',
+                                currency: expressConfig.currency || DEFAULT_TENANT_CURRENCY,
                                 weightUnit: expressConfig.weight_unit || 'Kilogrammes (kg)',
                                 visibility: expressConfig.express_visibility || {
                                     showTTC: true,
@@ -587,7 +616,7 @@ export default function CataloguePage() {
                 )}
 
                 {activeTab !== 'types' && activeTab !== 'services' && activeTab !== 'pricing' && activeTab !== 'express' && (
-                    <div className="py-12 text-center text-gray-500">
+                    <div className="py-12 text-center text-muted-foreground">
                         Contenu de l'onglet {TABS.find(t => t.id === activeTab)?.label} en cours de développement.
                     </div>
                 )}

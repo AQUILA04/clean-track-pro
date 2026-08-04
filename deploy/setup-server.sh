@@ -76,11 +76,12 @@ _db_name_prod="${CT_DB_NAME_PROD:-cleantrack_prod}"
 _kc_admin_pass="${CT_KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME_keycloak_admin_password}"
 _kc_client_secret="${CT_KEYCLOAK_CLIENT_SECRET:-CHANGE_ME_keycloak_client_secret}"
 _nextauth_secret="${CT_NEXTAUTH_SECRET:-CHANGE_ME_nextauth_secret}"
-_app_host_test="${CT_APP_HOSTNAME_TEST:-test.cleantrack.local}"
-_app_host_prod="${CT_APP_HOSTNAME_PROD:-cleantrack.local}"
-_kc_host_test="${CT_KEYCLOAK_HOSTNAME_TEST:-keycloak.test.cleantrack.local}"
-_kc_host_prod="${CT_KEYCLOAK_HOSTNAME_PROD:-keycloak.cleantrack.local}"
-_maildev_host="${CT_MAILDEV_HOSTNAME:-maildev.test.cleantrack.local}"
+_app_host_test="${CT_APP_HOSTNAME_TEST:-test.cleantrack.optimizesolux.com}"
+_app_host_prod="${CT_APP_HOSTNAME_PROD:-cleantrack.optimizesolux.com}"
+_api_host_prod="${CT_API_HOSTNAME_PROD:-cleantrack-api.optimizesolux.com}"
+_kc_host_test="${CT_KEYCLOAK_HOSTNAME_TEST:-keycloak.test.cleantrack.optimizesolux.com}"
+_kc_host_prod="${CT_KEYCLOAK_HOSTNAME_PROD:-cleantrack-auth.optimizesolux.com}"
+_maildev_host="${CT_MAILDEV_HOSTNAME:-maildev.test.cleantrack.optimizesolux.com}"
 
 TEST_ENV="/opt/cleantrack/test/.env"
 if [[ ! -f "$TEST_ENV" ]]; then
@@ -138,8 +139,10 @@ KEYCLOAK_AUTH_SERVER_URL=https://${_kc_host_prod}
 KEYCLOAK_ISSUER=https://${_kc_host_prod}/realms/cleantrack
 
 APP_HOSTNAME=${_app_host_prod}
+API_HOSTNAME=${_api_host_prod}
+CORS_ORIGINS=https://${_app_host_prod}
 
-NEXT_PUBLIC_API_URL=https://${_app_host_prod}/api
+NEXT_PUBLIC_API_URL=https://${_api_host_prod}
 NEXTAUTH_URL=https://${_app_host_prod}
 NEXTAUTH_SECRET=${_nextauth_secret}
 
@@ -153,14 +156,21 @@ else
   echo "      $PROD_ENV already exists, skipping."
 fi
 
-# --- 5. Start Traefik reverse proxy ---
-echo "[5/5] Starting Traefik reverse proxy..."
-TRAEFIK_COMPOSE="/opt/cleantrack/traefik/docker-compose.traefik.yml"
-if [[ ! -f "$TRAEFIK_COMPOSE" ]]; then
-  cat > "$TRAEFIK_COMPOSE" << 'EOF'
+# --- 5. Traefik reverse proxy ---
+# Prefer the shared OptimizeSolux Traefik (/opt/optimizesolux/traefik).
+# Only bootstrap a local Traefik if nothing is listening on :80 yet.
+echo "[5/5] Checking Traefik reverse proxy..."
+if docker ps --format '{{.Names}}' | grep -qx 'shared-traefik'; then
+    echo "      Shared Traefik (shared-traefik) already running — skipping local Traefik."
+elif ss -tlnp 2>/dev/null | grep -q ':80 '; then
+    echo "      Port 80 already in use — skipping local Traefik bootstrap."
+else
+    TRAEFIK_COMPOSE="/opt/cleantrack/traefik/docker-compose.traefik.yml"
+    if [[ ! -f "$TRAEFIK_COMPOSE" ]]; then
+      cat > "$TRAEFIK_COMPOSE" << 'EOF'
 services:
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.6.15
     container_name: traefik
     restart: unless-stopped
     ports:
@@ -171,13 +181,14 @@ services:
       - "--api.insecure=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik-public"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=admin@cleantrack.local"
+      - "--certificatesresolvers.letsencrypt.acme.email=contact@optimizesolux.com"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -189,14 +200,15 @@ networks:
   traefik-public:
     external: true
 EOF
-  echo "      Traefik compose file created."
-fi
+      echo "      Local Traefik compose file created (fallback)."
+    fi
 
-if docker compose -f "$TRAEFIK_COMPOSE" ps --quiet traefik 2>/dev/null | grep -q .; then
-    echo "      Traefik is already running."
-else
-    docker compose -f "$TRAEFIK_COMPOSE" up -d
-    echo "      Traefik started."
+    if docker compose -f "$TRAEFIK_COMPOSE" ps --quiet traefik 2>/dev/null | grep -q .; then
+        echo "      Local Traefik is already running."
+    else
+        docker compose -f "$TRAEFIK_COMPOSE" up -d
+        echo "      Local Traefik started."
+    fi
 fi
 
 echo ""
@@ -205,12 +217,11 @@ echo ""
 echo "Server IP: $(curl -s ifconfig.me 2>/dev/null || echo '<server-ip>')"
 echo ""
 echo "Next steps:"
-echo "  1. Ensure DNS records point to this server IP:"
-echo "       A  ${_app_host_test}   →  <server-ip>"
-echo "       A  ${_kc_host_test}    →  <server-ip>"
-echo "       A  ${_maildev_host}    →  <server-ip>"
-echo "       A  ${_app_host_prod}   →  <server-ip>"
-echo "       A  ${_kc_host_prod}    →  <server-ip>"
-echo "  2. Verify secrets in /opt/cleantrack/test/.env and /opt/cleantrack/prod/.env"
-echo "  3. Deployment will proceed automatically via init.sh"
+echo "  1. Ensure DNS A records (DNS only / grey cloud) point to this server:"
+echo "       ${_app_host_prod}"
+echo "       ${_api_host_prod}"
+echo "       ${_kc_host_prod}"
+echo "  2. Verify secrets in /opt/cleantrack/prod/.env"
+echo "  3. Clone repo themes: git clone https://github.com/AQUILA04/clean-track-pro.git /opt/cleantrack/repo"
+echo "  4. Deployment via init.sh / CD"
 echo ""

@@ -474,7 +474,13 @@ So that I can investigate issues.
 
 ## Epic 10: SaaS Subscription Engine
 
-Monetization infrastructure for multi-tenant billing, plan management, and access control.
+Monetization infrastructure for multi-tenant billing, plan management, usage metering, and access control.
+
+**Design principles:**
+- Two limit types: **capacity** (current resource count) vs **usage** (events per time window).
+- Multi-window quotas: an operation can have **daily, weekly, monthly, and yearly** limits simultaneously (all must pass).
+- Period boundaries use the **tenant timezone** (IANA, default `Europe/Paris`); weeks follow **ISO 8601** (Monday–Sunday).
+- Enforcement is **gradual**: warn at 80/90 %, hard block at 100 %; `PAST_DUE` gets a grace period before full suspension.
 
 ### Story 10.1: Subscription Plan Configuration
 
@@ -486,16 +492,207 @@ So that I can sell different tiers of service.
 
 **Given** The Plan Management Interface
 **When** I create a plan
-**Then** I can define Name, Price, Billing Interval (Monthly/Yearly), and Max Sites
+**Then** I can define Name, Price, Billing Interval (Monthly/Yearly), and operation limits via JSONB
+**And** Each operation limit supports multiple time windows (daily, weekly, monthly, yearly)
+**And** I can enable/disable feature flags (e.g. remittances, cash_register) per plan
 
-### Story 10.2: Tenant Subscription Enforcement
+**Technical Notes:**
+- `subscription_plans.limits` JSONB structure: `{ "orders.create": { "type": "usage", "windows": [{ "period": "daily", "limit": 20, "enforce": "hard" }, ...] } }`
+- Capacity limits use `"period": "none"` (e.g. `sites.capacity`)
+
+### Story 10.2: Tenant Subscription Assignment
+
+As a Superadmin,
+I want to assign a Subscription Plan to each Tenant,
+So that limits and billing apply from onboarding.
+
+**Acceptance Criteria:**
+
+**Given** A new Tenant is created
+**When** Onboarding completes
+**Then** A `tenant_subscriptions` record is created (default: Starter or Trial)
+**And** The subscription has status, `current_period_start`, and `current_period_end`
+
+**Given** An existing Tenant without subscription
+**When** The migration runs
+**Then** All tenants receive a default Starter subscription
+
+### Story 10.3: Usage Metering Service
 
 As a System,
-I want to enforce plan limits (e.g. Max Sites),
+I want to count operations per tenant per time window,
+So that quotas can be enforced accurately.
+
+**Acceptance Criteria:**
+
+**Given** A metered operation (e.g. `orders.create`)
+**When** The operation succeeds
+**Then** Usage counters are incremented for **all configured windows** (daily, weekly, monthly, yearly)
+**And** Counters are stored in `tenant_usage_periods` with idempotency via resource ID
+**And** Period keys respect tenant timezone (`2026-07-29`, `2026-W30`, `2026-07`, `2026`)
+
+### Story 10.4: Quota Service & Multi-Window Enforcement
+
+As a System,
+I want to check all applicable quota windows before allowing an operation,
+So that tenants cannot exceed any configured limit.
+
+**Acceptance Criteria:**
+
+**Given** A Tenant on Starter plan with orders limits: 20/day, 100/week, 500/month
+**When** They attempt their 21st order today
+**Then** The system returns `403 QUOTA_EXCEEDED` with window details (`period: daily`, `limit`, `current`, `resetsAt`)
+**And** Other window usage is included in the response for UI gauges
+
+**Given** A capacity limit (`sites.capacity: 1`)
+**When** They try to add a 2nd Site
+**Then** The system blocks the action and prompts to Upgrade
+
+### Story 10.5: Sites Capacity Enforcement
+
+As a System,
+I want to enforce max sites per plan,
 So that tenants pay for what they use.
 
 **Acceptance Criteria:**
 
 **Given** A Tenant on "Starter" plan (Max 1 Site)
 **When** They try to add a 2nd Site
-**Then** The system blocks the action and prompts to Upgrade
+**Then** The system blocks the action with structured quota error
+
+### Story 10.6: Orders Usage Enforcement (Multi-Window)
+
+As a System,
+I want to enforce order volume limits across daily, weekly, and monthly windows,
+So that usage stays within plan boundaries.
+
+**Acceptance Criteria:**
+
+**Given** A Tenant with monthly limit 500, weekly 100, daily 20
+**When** Any single window is exhausted
+**Then** Order creation is blocked even if other windows have remaining capacity
+**And** Usage is recorded only after successful order persistence
+
+### Story 10.7: Tenant Usage Dashboard
+
+As an Admin_Tenant,
+I want to see my current usage against all quota windows,
+So that I can anticipate limits and plan upgrades.
+
+**Acceptance Criteria:**
+
+**Given** The Subscription / Usage page
+**When** I load it
+**Then** I see gauges per operation and window (e.g. Today 18/20, This week 87/100, This month 412/500)
+**And** Each gauge shows when the window resets
+
+### Story 10.8: Quota Threshold Alerts
+
+As an Admin_Tenant,
+I want to be notified when approaching quota limits,
+So that I can upgrade before service disruption.
+
+**Acceptance Criteria:**
+
+**Given** Usage reaches 80 % or 90 % of any window
+**When** The threshold is crossed
+**Then** An in-app banner is displayed to Admin_Tenant
+**And** (Future) An email notification is sent
+
+### Story 10.9: Users & Storage Slots Capacity
+
+As a System,
+I want to enforce max users and storage slots per plan,
+So that resource usage scales with subscription tier.
+
+**Acceptance Criteria:**
+
+**Given** Plan limits on `users.capacity` and `storage_slots.capacity`
+**When** Invite or slot creation would exceed the limit
+**Then** The action is blocked with upgrade prompt
+
+### Story 10.10: Enterprise Custom Limits (Superadmin Override)
+
+As a Superadmin,
+I want to override plan limits for specific tenants,
+So that Enterprise clients get tailored quotas without custom plans.
+
+**Acceptance Criteria:**
+
+**Given** A Tenant with `custom_limits` JSONB on their subscription
+**When** Quotas are resolved
+**Then** Custom limits merge with (and override) plan defaults per window
+
+### Story 10.11: Subscription Status & Grace Period
+
+As a System,
+I want to handle TRIAL, ACTIVE, PAST_DUE, SUSPENDED, and CANCELLED states,
+So that billing issues are handled professionally.
+
+**Acceptance Criteria:**
+
+**Given** A subscription in `PAST_DUE` within grace period
+**When** The tenant performs read operations
+**Then** Access is allowed with a payment warning banner
+**And** Write operations on metered resources are blocked after grace expires
+
+### Story 10.12: Stripe Billing Integration [BACKLOG]
+
+As a Superadmin,
+I want automated billing via Stripe,
+So that subscriptions renew without manual intervention.
+
+### Story 10.13: Superadmin Billing Dashboard [BACKLOG]
+
+As a Superadmin,
+I want MRR, churn, and aggregated usage views,
+So that I can manage platform monetization.
+
+### Story 10.14: Self-Service Upgrade [BACKLOG]
+
+As an Admin_Tenant,
+I want to upgrade my plan from the app,
+So that I can increase limits without contacting support.
+
+### Story 10.15: Print & Storage Upload Metering [BACKLOG]
+
+As a System,
+I want to meter `prints.ticket` and `storage.upload` per plan,
+So that heavy usage can be monetized separately.
+
+### Story 10.16: Usage Reconciliation Job [BACKLOG]
+
+As a System,
+I want nightly reconciliation of usage counters,
+So that billing records stay accurate.
+
+### Story 10.17: Usage Export for Manual Billing [BACKLOG]
+
+As a Superadmin,
+I want CSV export of tenant usage by period,
+So that B2B invoicing can be done offline.
+
+### Story 10.18: E2E Quota Tests
+
+As a Developer,
+I want automated tests for quota enforcement,
+So that regressions are caught before release.
+
+**Acceptance Criteria:**
+
+**Given** E2E tenant on Starter plan
+**When** They exceed site or order limits
+**Then** API returns `403 QUOTA_EXCEEDED` with correct window metadata
+
+### Story 10.19: Tenant Timezone Configuration
+
+As an Admin_Tenant,
+I want my agency timezone configured for quota periods,
+So that daily/weekly limits align with my local business day.
+
+**Acceptance Criteria:**
+
+**Given** A tenant with timezone `Indian/Reunion`
+**When** Daily quota resets
+**Then** Reset occurs at midnight in that timezone, not UTC
+**And** Default timezone for new tenants is `Europe/Paris`

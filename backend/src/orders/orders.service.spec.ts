@@ -8,6 +8,10 @@ import { TenantService } from '../tenant/tenant.service';
 import { PricingService } from '../catalog/services/pricing.service';
 import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
 import { DataSource } from 'typeorm';
+import { StorageService } from '../storage/storage.service';
+import { QuotaService } from '../subscription/services/quota.service';
+import { Client } from '../clients/entities/client.entity';
+import { Site } from '../sites/entities/site.entity';
 
 describe('OrdersService', () => {
     let service: OrdersService;
@@ -17,9 +21,20 @@ describe('OrdersService', () => {
     // Mock Managers and Repositories
     const mockQueryBuilder = {
         select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
+        setParameter: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        leftJoinAndMapOne: jest.fn().mockReturnThis(),
         getRawOne: jest.fn(),
+        getRawMany: jest.fn(),
+        getCount: jest.fn(),
+        getOne: jest.fn(),
+        getMany: jest.fn(),
     };
 
     const mockOrderRepository = {
@@ -30,18 +45,46 @@ describe('OrdersService', () => {
         createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
     };
 
+    const mockClientRepository = {
+        findOne: jest.fn(),
+    };
+
+    const mockSiteRepository = {
+        findOne: jest.fn(),
+    };
+
+    const mockRefCountQb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(0),
+    };
+
     const mockEntityManager = {
         create: jest.fn().mockImplementation((entity, dto) => dto),
-        save: jest.fn().mockImplementation((entityOrEntities) => {
-            if (Array.isArray(entityOrEntities)) {
-                return Promise.resolve(entityOrEntities);
+        save: jest.fn().mockImplementation((entityOrTarget, maybeEntity?) => {
+            const entity = maybeEntity !== undefined ? maybeEntity : entityOrTarget;
+            if (Array.isArray(entity)) {
+                return Promise.resolve(entity.map((e, i) => ({ ...e, id: `saved-id-${i}` })));
             }
-            return Promise.resolve({ id: 'saved-id', ...entityOrEntities });
+            return Promise.resolve({ ...entity, id: 'saved-id' });
         }),
+        findOne: jest.fn().mockResolvedValue({ id: 'site-1', code: 1, tenant_id: 'tenant-1' }),
+        createQueryBuilder: jest.fn().mockReturnValue(mockRefCountQb),
     };
 
     const mockDataSource = {
         transaction: jest.fn().mockImplementation((cb) => cb(mockEntityManager)),
+        createQueryBuilder: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnThis(),
+            addSelect: jest.fn().mockReturnThis(),
+            from: jest.fn().mockReturnThis(),
+            leftJoin: jest.fn().mockReturnThis(),
+            where: jest.fn().mockReturnThis(),
+            groupBy: jest.fn().mockReturnThis(),
+            addGroupBy: jest.fn().mockReturnThis(),
+            orderBy: jest.fn().mockReturnThis(),
+            getRawMany: jest.fn().mockResolvedValue([]),
+        }),
     };
 
     const mockTenantService = {
@@ -52,13 +95,49 @@ describe('OrdersService', () => {
         getPrice: jest.fn(),
     };
 
+    const mockStorageService = {
+        getOrderStorageInfo: jest.fn().mockResolvedValue({
+            slot_label: 'A-01',
+            slot_type: 'RECEPTION',
+            slot_id: 'slot-1',
+        }),
+        releaseOrder: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const mockQuotaService = {
+        assertWithinQuota: jest.fn().mockResolvedValue(undefined),
+        recordUsage: jest.fn().mockResolvedValue(undefined),
+    };
+
     beforeEach(async () => {
+        jest.clearAllMocks();
+        mockOrderRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+        mockEntityManager.findOne.mockResolvedValue({ id: 'site-1', code: 1, tenant_id: 'tenant-1' });
+        mockEntityManager.createQueryBuilder.mockReturnValue(mockRefCountQb);
+        mockRefCountQb.getCount.mockResolvedValue(0);
+        mockEntityManager.create.mockImplementation((entity, dto) => dto);
+        mockEntityManager.save.mockImplementation((entityOrTarget, maybeEntity?) => {
+            const entity = maybeEntity !== undefined ? maybeEntity : entityOrTarget;
+            if (Array.isArray(entity)) {
+                return Promise.resolve(entity.map((e, i) => ({ ...e, id: `saved-id-${i}` })));
+            }
+            return Promise.resolve({ ...entity, id: 'saved-id' });
+        });
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 OrdersService,
                 {
                     provide: getRepositoryToken(Order),
                     useValue: mockOrderRepository,
+                },
+                {
+                    provide: getRepositoryToken(Client),
+                    useValue: mockClientRepository,
+                },
+                {
+                    provide: getRepositoryToken(Site),
+                    useValue: mockSiteRepository,
                 },
                 {
                     provide: TenantService,
@@ -72,12 +151,23 @@ describe('OrdersService', () => {
                     provide: DataSource,
                     useValue: mockDataSource,
                 },
+                {
+                    provide: StorageService,
+                    useValue: mockStorageService,
+                },
+                {
+                    provide: QuotaService,
+                    useValue: mockQuotaService,
+                },
             ],
         }).compile();
 
         service = module.get<OrdersService>(OrdersService);
         tenantService = module.get<TenantService>(TenantService);
         pricingService = module.get<PricingService>(PricingService);
+
+        mockClientRepository.findOne.mockReset();
+        mockClientRepository.findOne.mockResolvedValue(null);
     });
 
     it('should create order and match calculated price', async () => {
@@ -107,6 +197,12 @@ describe('OrdersService', () => {
         expect(mockPricingService.getPrice).toHaveBeenCalledWith('tenant-1', 'article-1', 'service-1');
         expect(result.total_price).toBe(15.00);
         expect(mockEntityManager.save).toHaveBeenCalledTimes(2); // Order and Item (loop)
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0]).toEqual(expect.objectContaining({
+            id: 'saved-id',
+            article_type_id: 'article-1',
+            service_definition_id: 'service-1',
+        }));
     });
 
     it('should force calculated price if provided price is wrong', async () => {
@@ -147,17 +243,146 @@ describe('OrdersService', () => {
         await expect(service.create(dto, 'tenant-1')).rejects.toThrow('Order must have items');
     });
 
+    describe('findOne / lookup', () => {
+        beforeEach(() => {
+            mockOrderRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+            mockQueryBuilder.getMany.mockResolvedValue([]);
+        });
+
+        it('should return order with client_name for full UUID', async () => {
+            const order = {
+                id: '03d05cdb-457d-4e14-adb0-f174f985ec82',
+                tenant_id: 'tenant-1',
+                client_id: 'client-1',
+                client: { first_name: 'Jean', last_name: 'Dupont' },
+                items: [],
+            };
+            mockQueryBuilder.getMany.mockResolvedValue([order]);
+
+            const result = await service.findOne('03d05cdb-457d-4e14-adb0-f174f985ec82', 'tenant-1');
+
+            expect(result.client_name).toBe('Jean Dupont');
+            expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('order.id = :id', {
+                id: '03d05cdb-457d-4e14-adb0-f174f985ec82',
+            });
+        });
+
+        it('should resolve client_name via client repository when join misses', async () => {
+            const order = {
+                id: '03d05cdb-457d-4e14-adb0-f174f985ec82',
+                tenant_id: 'tenant-1',
+                client_id: 'client-1',
+                items: [],
+            };
+            mockQueryBuilder.getMany.mockResolvedValue([order]);
+            mockClientRepository.findOne.mockResolvedValue({
+                id: 'client-1',
+                first_name: 'Awa',
+                last_name: 'Diallo',
+            });
+
+            const result = await service.findOne('03d05cdb-457d-4e14-adb0-f174f985ec82', 'tenant-1');
+
+            expect(result.client_name).toBe('Awa Diallo');
+            expect(mockClientRepository.findOne).toHaveBeenCalledWith({ where: { id: 'client-1' } });
+        });
+
+        it('should find order by partial UUID prefix', async () => {
+            const order = {
+                id: '03d05cdb-457d-4e14-adb0-f174f985ec82',
+                tenant_id: 'tenant-1',
+                client: { first_name: 'Marie', last_name: 'Martin' },
+                items: [],
+            };
+            mockQueryBuilder.getMany.mockResolvedValue([order]);
+
+            const result = await service.findOne('03d05cdb', 'tenant-1');
+
+            expect(result.client_name).toBe('Marie Martin');
+            expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+                expect.stringContaining('CAST(order.id AS TEXT) ILIKE'),
+                expect.objectContaining({ uuidPrefix: '03d05cdb%' }),
+            );
+        });
+
+        it('should throw when multiple orders match and findOne is used', async () => {
+            mockQueryBuilder.getMany.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+
+            await expect(service.findOne('03d05cdb', 'tenant-1')).rejects.toThrow(
+                'Multiple orders match this query',
+            );
+        });
+
+        it('lookup should return multiple matches without throwing', async () => {
+            const orders = [
+                { id: 'a', reference: 'REF-01-2507-000136', client: { first_name: 'A', last_name: 'B' }, items: [] },
+                { id: 'b', reference: 'REF-01-2507-000236', client: { first_name: 'C', last_name: 'D' }, items: [] },
+            ];
+            mockQueryBuilder.getMany.mockResolvedValue(orders);
+
+            const result = await service.lookup('136', 'tenant-1');
+
+            expect(result.count).toBe(2);
+            expect(result.orders).toHaveLength(2);
+            expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+                expect.stringContaining('order.reference ILIKE'),
+                expect.objectContaining({ refFragment: '%136%' }),
+            );
+        });
+
+        it('should throw for query too short', async () => {
+            await expect(service.findOne('a', 'tenant-1')).rejects.toThrow('Query too short');
+        });
+
+        it('create should assign a reference', async () => {
+            mockTenantService.findOne.mockResolvedValue({ express_multiplier: 1.0 });
+            mockPricingService.getPrice.mockResolvedValue(10.0);
+            mockRefCountQb.getCount.mockResolvedValue(135);
+
+            const dto: CreateOrderDto = {
+                site_id: 'site-1',
+                client_id: 'client-1',
+                due_date: new Date().toISOString(),
+                status: OrderStatus.CREATED,
+                service_level: ServiceLevel.NORMAL,
+                total_price: 10,
+                items: [{
+                    article_type_id: 'article-1',
+                    service_definition_id: 'service-1',
+                    quantity: 1,
+                    price: 10,
+                }],
+            };
+
+            await service.create(dto, 'tenant-1');
+
+            expect(mockEntityManager.create).toHaveBeenCalledWith(
+                Order,
+                expect.objectContaining({
+                    reference: expect.stringMatching(/^REF-01-\d{4}-000136$/),
+                }),
+            );
+        });
+    });
+
     describe('updateStatus', () => {
         it('should update status for valid transition', async () => {
             mockOrderRepository.findOne.mockResolvedValue({
                 id: 'order-1',
                 tenant_id: 'tenant-1',
+                client_id: 'client-1',
                 status: OrderStatus.CREATED
             });
             mockOrderRepository.save.mockImplementation(o => Promise.resolve(o));
+            mockClientRepository.findOne.mockResolvedValue({
+                id: 'client-1',
+                first_name: 'Jean',
+                last_name: 'Dupont',
+            });
 
             const result = await service.updateStatus('order-1', OrderStatus.IN_PROGRESS, 'tenant-1');
             expect(result.status).toBe(OrderStatus.IN_PROGRESS);
+            expect(result.client_name).toBe('Jean Dupont');
             expect(mockOrderRepository.save).toHaveBeenCalled();
         });
 
@@ -182,8 +407,8 @@ describe('OrdersService', () => {
 
     describe('getDashboardStats', () => {
         beforeEach(() => {
-            // Reset mocks before each test to avoid call count accumulation
             jest.clearAllMocks();
+            mockOrderRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
         });
 
         it('should return aggregated stats for tenant', async () => {
@@ -296,6 +521,35 @@ describe('OrdersService', () => {
                     start: expect.any(Date),
                     end: expect.any(Date)
                 })
+            );
+        });
+    });
+
+    describe('getDelayedStats', () => {
+        beforeEach(() => {
+            jest.clearAllMocks();
+            mockOrderRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+            mockQueryBuilder.getCount = jest.fn().mockResolvedValue(4);
+        });
+
+        it('should count active orders past due_date', async () => {
+            const result = await service.getDelayedStats('tenant-1');
+            expect(result).toEqual({ delayedOrders: 4 });
+            expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+                'order.tenant_id = :tenantId',
+                { tenantId: 'tenant-1' },
+            );
+            expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+                'order.due_date < :now',
+                expect.objectContaining({ now: expect.any(Date) }),
+            );
+        });
+
+        it('should filter by siteId when provided', async () => {
+            await service.getDelayedStats('tenant-1', 'site-9');
+            expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+                'order.site_id = :siteId',
+                { siteId: 'site-9' },
             );
         });
     });

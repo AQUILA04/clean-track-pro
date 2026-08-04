@@ -1,121 +1,89 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import DashboardPage from './page';
-import { OrdersService } from '@/services/orders.service';
-import { format, subDays } from 'date-fns';
 
-// Mock OrdersService
-jest.mock('@/services/orders.service', () => ({
-    OrdersService: {
-        getDashboardStats: jest.fn()
-    }
+const mockUseSession = jest.fn();
+
+jest.mock('next-auth/react', () => ({
+    useSession: () => mockUseSession(),
 }));
 
-describe('DashboardPage', () => {
-    const mockStats = {
-        ordersToday: 10,
-        revenueToday: 1000,
-        pendingOrders: 5
-    };
+jest.mock('@/components/dashboard/TenantNetworkDashboard', () => ({
+    TenantNetworkDashboard: () => <div>Tenant Network Dashboard</div>,
+}));
 
-    beforeEach(() => {
-        (OrdersService.getDashboardStats as jest.Mock).mockResolvedValue(mockStats);
-    });
+jest.mock('@/components/dashboard/AdminSiteDashboard', () => ({
+    AdminSiteDashboard: () => <div>Admin Site Dashboard</div>,
+}));
 
+jest.mock('@/components/dashboard/UserSiteOpsHome', () => ({
+    UserSiteOpsHome: () => <div>User Site Ops Home</div>,
+}));
+
+describe('DashboardPage role routing', () => {
     afterEach(() => {
         jest.clearAllMocks();
     });
 
-    it('renders dashboard with initial "Today" stats', async () => {
+    it('shows loading while session is loading', () => {
+        mockUseSession.mockReturnValue({ data: null, status: 'loading' });
         render(<DashboardPage />);
-
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        await waitFor(() => {
-            expect(screen.queryByText('Loading dashboard...')).not.toBeInTheDocument();
-        });
-
-        // Verify initial call
-        const expectedEnd = format(new Date(), 'yyyy-MM-dd');
-        const expectedStart = format(new Date(), 'yyyy-MM-dd');
-        expect(OrdersService.getDashboardStats).toHaveBeenCalledWith(expectedStart, expectedEnd, timezone);
-
-        expect(screen.getByText('Orders (Today)')).toBeInTheDocument();
-        expect(screen.getByText('10')).toBeInTheDocument();
-
-        // Check active button
-        const todayButton = screen.getByText('Today');
-        expect(todayButton).toHaveClass('bg-[#1A5AD7]');
+        expect(screen.getByText('Chargement...')).toBeInTheDocument();
     });
 
-    it('fetches data for "Last 7 Days" when clicked', async () => {
+    it('renders TenantNetworkDashboard for Admin_Tenant', async () => {
+        mockUseSession.mockReturnValue({
+            data: { user: { roles: ['Admin_Tenant'] } },
+            status: 'authenticated',
+        });
         render(<DashboardPage />);
-
         await waitFor(() => {
-            expect(screen.queryByText('Loading dashboard...')).not.toBeInTheDocument();
-        });
-
-        const last7DaysButton = screen.getByText('Last 7 Days');
-        fireEvent.click(last7DaysButton);
-
-        const expectedEnd = format(new Date(), 'yyyy-MM-dd');
-        const expectedStart = format(subDays(new Date(), 7), 'yyyy-MM-dd');
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        await waitFor(() => {
-            expect(OrdersService.getDashboardStats).toHaveBeenCalledWith(expectedStart, expectedEnd, timezone);
-        });
-
-        expect(last7DaysButton).toHaveClass('bg-[#1A5AD7]');
-    });
-
-    it('fetches data for "Last 30 Days" when clicked', async () => {
-        render(<DashboardPage />);
-
-        await waitFor(() => {
-            expect(screen.queryByText('Loading dashboard...')).not.toBeInTheDocument();
-        });
-
-        const last30DaysButton = screen.getByText('Last 30 Days');
-        fireEvent.click(last30DaysButton);
-
-        const expectedEnd = format(new Date(), 'yyyy-MM-dd');
-        const expectedStart = format(subDays(new Date(), 30), 'yyyy-MM-dd');
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        await waitFor(() => {
-            expect(OrdersService.getDashboardStats).toHaveBeenCalledWith(expectedStart, expectedEnd, timezone);
+            expect(screen.getByText('Tenant Network Dashboard')).toBeInTheDocument();
         });
     });
 
-    it('verifies timezone is valid before API call', async () => {
-        render(<DashboardPage />);
-
-        await waitFor(() => {
-            expect(screen.queryByText('Loading dashboard...')).not.toBeInTheDocument();
+    it('renders TenantNetworkDashboard for Superadmin', async () => {
+        mockUseSession.mockReturnValue({
+            data: { user: { roles: ['Superadmin'] } },
+            status: 'authenticated',
         });
-
-        // Verify timezone was passed and is a non-empty string
-        const callArgs = (OrdersService.getDashboardStats as jest.Mock).mock.calls[0];
-        const timezone = callArgs[2];
-
-        expect(timezone).toBeTruthy();
-        expect(typeof timezone).toBe('string');
-        expect(timezone.length).toBeGreaterThan(0);
+        render(<DashboardPage />);
+        await waitFor(() => {
+            expect(screen.getByText('Tenant Network Dashboard')).toBeInTheDocument();
+        });
     });
 
-    it('displays error message when API call fails', async () => {
-        const errorMessage = 'Failed to load dashboard statistics. Please try again later.';
-        (OrdersService.getDashboardStats as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
-
+    it('renders AdminSiteDashboard for Admin_Site', async () => {
+        mockUseSession.mockReturnValue({
+            data: { user: { roles: ['Admin_Site'], site_ids: ['site-1'] } },
+            status: 'authenticated',
+        });
         render(<DashboardPage />);
-
         await waitFor(() => {
-            expect(screen.queryByText('Loading dashboard...')).not.toBeInTheDocument();
+            expect(screen.getByText('Admin Site Dashboard')).toBeInTheDocument();
         });
+    });
 
-        await waitFor(() => {
-            expect(screen.getByText(errorMessage)).toBeInTheDocument();
+    it('renders UserSiteOpsHome for User_Site', async () => {
+        mockUseSession.mockReturnValue({
+            data: { user: { roles: ['User_Site'], site_ids: ['site-1'] } },
+            status: 'authenticated',
         });
+        render(<DashboardPage />);
+        await waitFor(() => {
+            expect(screen.getByText('User Site Ops Home')).toBeInTheDocument();
+        });
+    });
+
+    it('prefers TenantNetworkDashboard when user has both Admin_Tenant and Admin_Site', async () => {
+        mockUseSession.mockReturnValue({
+            data: { user: { roles: ['Admin_Tenant', 'Admin_Site'] } },
+            status: 'authenticated',
+        });
+        render(<DashboardPage />);
+        await waitFor(() => {
+            expect(screen.getByText('Tenant Network Dashboard')).toBeInTheDocument();
+        });
+        expect(screen.queryByText('Admin Site Dashboard')).not.toBeInTheDocument();
     });
 });

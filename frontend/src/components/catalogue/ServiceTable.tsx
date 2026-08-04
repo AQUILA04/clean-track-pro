@@ -34,10 +34,10 @@ export const ServiceTable: React.FC<ServiceTableProps> = ({ services, onEdit, on
                     header: 'NOM DU SERVICE',
                     accessor: (service) => (
                         <div className="flex items-center space-x-3">
-                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${service.color || 'bg-gray-100 text-gray-500'}`}>
+                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${service.color || 'bg-muted text-muted-foreground'}`}>
                                 {IconMap[service.icon] || <Droplets className="h-5 w-5" />}
                             </div>
-                            <span className="font-semibold text-gray-900">{service.name}</span>
+                            <span className="font-semibold text-foreground">{service.name}</span>
                         </div>
                     ),
                     className: "w-1/3"
@@ -45,7 +45,7 @@ export const ServiceTable: React.FC<ServiceTableProps> = ({ services, onEdit, on
                 {
                     header: 'DESCRIPTION',
                     accessor: (service) => (
-                        <span className="text-gray-600 text-sm">{service.description}</span>
+                        <span className="text-muted-foreground text-sm">{service.description}</span>
                     ),
                 },
                 {
@@ -56,7 +56,7 @@ export const ServiceTable: React.FC<ServiceTableProps> = ({ services, onEdit, on
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => onEdit(service)}
-                                className="text-gray-400 hover:text-gray-600 p-1 h-8 w-8"
+                                className="text-muted-foreground hover:text-foreground p-1 h-8 w-8"
                             >
                                 <Pencil className="h-4 w-4" />
                             </Button>
@@ -64,7 +64,7 @@ export const ServiceTable: React.FC<ServiceTableProps> = ({ services, onEdit, on
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => onDelete(service)}
-                                className="text-gray-400 hover:text-red-600 p-1 h-8 w-8"
+                                className="text-muted-foreground hover:text-red-500 p-1 h-8 w-8"
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>

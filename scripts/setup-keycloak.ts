@@ -5,6 +5,37 @@ const KEYCLOAK_ADMIN = process.env.KEYCLOAK_ADMIN || 'admin';
 const KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin';
 const REALM_NAME = process.env.KEYCLOAK_REALM || 'cleantrack';
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || 'cleantrack-client';
+const CLEANTRACK_THEME = 'cleantrack-pro';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
+const KEYCLOAK_SMTP_HOST = process.env.KEYCLOAK_SMTP_HOST;
+const KEYCLOAK_SMTP_PORT = process.env.KEYCLOAK_SMTP_PORT || '1025';
+const KEYCLOAK_SMTP_FROM = process.env.KEYCLOAK_SMTP_FROM;
+const KEYCLOAK_SMTP_FROM_DISPLAY_NAME =
+    process.env.KEYCLOAK_SMTP_FROM_DISPLAY_NAME || 'Support CleanTrackPro';
+const KEYCLOAK_SMTP_REPLY_TO = process.env.KEYCLOAK_SMTP_REPLY_TO || KEYCLOAK_SMTP_FROM;
+const KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME =
+    process.env.KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME || KEYCLOAK_SMTP_FROM_DISPLAY_NAME;
+const LEGACY_FRONTEND_URLS = (process.env.EXTRA_FRONTEND_URLS || 'http://localhost:3000')
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean);
+
+function buildRedirectUris(): string[] {
+    const frontendUrls = [FRONTEND_URL, ...LEGACY_FRONTEND_URLS.filter((url) => url !== FRONTEND_URL)];
+    const uris = new Set<string>();
+
+    for (const baseUrl of frontendUrls) {
+        uris.add(`${baseUrl}/*`);
+        uris.add(`${baseUrl}/auth/signin`);
+        uris.add(`${baseUrl}/api/auth/callback/keycloak`);
+    }
+
+    return Array.from(uris);
+}
+
+function buildWebOrigins(): string[] {
+    return Array.from(new Set([FRONTEND_URL, ...LEGACY_FRONTEND_URLS]));
+}
 
 const requiredEnvVars = [
     { name: 'KEYCLOAK_URL', val: KEYCLOAK_URL },
@@ -52,12 +83,56 @@ async function setupKeycloak() {
                 realm: REALM_NAME,
                 enabled: true,
                 displayName: 'CleanTrack Pro',
+                loginTheme: CLEANTRACK_THEME,
+                accountTheme: CLEANTRACK_THEME,
+                emailTheme: CLEANTRACK_THEME,
+                internationalizationEnabled: true,
+                supportedLocales: ['fr', 'en'],
+                defaultLocale: 'fr',
             });
             console.log(`✅ Created realm '${REALM_NAME}'`);
         }
 
         // Switch to the new realm
         kcAdminClient.setConfig({ realmName: REALM_NAME });
+
+        await kcAdminClient.realms.update(
+            { realm: REALM_NAME },
+            {
+                displayName: 'CleanTrack Pro',
+                loginTheme: CLEANTRACK_THEME,
+                accountTheme: CLEANTRACK_THEME,
+                emailTheme: CLEANTRACK_THEME,
+                internationalizationEnabled: true,
+                supportedLocales: ['fr', 'en'],
+                defaultLocale: 'fr',
+            },
+        );
+        console.log(`✅ Theme '${CLEANTRACK_THEME}' applied to realm '${REALM_NAME}'`);
+
+        if (KEYCLOAK_SMTP_HOST && KEYCLOAK_SMTP_FROM) {
+            await kcAdminClient.realms.update(
+                { realm: REALM_NAME },
+                {
+                    smtpServer: {
+                        host: KEYCLOAK_SMTP_HOST,
+                        port: KEYCLOAK_SMTP_PORT,
+                        from: KEYCLOAK_SMTP_FROM,
+                        fromDisplayName: KEYCLOAK_SMTP_FROM_DISPLAY_NAME,
+                        replyTo: KEYCLOAK_SMTP_REPLY_TO,
+                        replyToDisplayName: KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME,
+                        ssl: 'false',
+                        starttls: 'false',
+                        auth: 'false',
+                    },
+                },
+            );
+            console.log(
+                `✅ SMTP configured (${KEYCLOAK_SMTP_HOST}:${KEYCLOAK_SMTP_PORT}, from ${KEYCLOAK_SMTP_FROM})`,
+            );
+        } else {
+            console.log('ℹ️  SMTP not configured (set KEYCLOAK_SMTP_HOST and KEYCLOAK_SMTP_FROM)');
+        }
 
         // Create client
         const clients = await kcAdminClient.clients.find({ clientId: CLIENT_ID });
@@ -69,13 +144,10 @@ async function setupKeycloak() {
 
             // Update existing client to ensure redirects are correct
             await kcAdminClient.clients.update({ id: clientUuid }, {
-                redirectUris: [
-                    'http://localhost:3000/*',
-                    'http://localhost:3000/api/auth/callback/keycloak',
-                    'http://localhost:3001/*',
-                    'http://localhost:3001/api/auth/callback/keycloak',
-                ],
-                webOrigins: ['http://localhost:3000', 'http://localhost:3001'],
+                rootUrl: FRONTEND_URL,
+                baseUrl: `${FRONTEND_URL.replace(/\/+$/, '')}/auth/signin`,
+                redirectUris: buildRedirectUris(),
+                webOrigins: buildWebOrigins(),
                 standardFlowEnabled: true,
                 directAccessGrantsEnabled: true,
                 serviceAccountsEnabled: true,
@@ -89,17 +161,66 @@ async function setupKeycloak() {
                 standardFlowEnabled: true,
                 directAccessGrantsEnabled: true,
                 serviceAccountsEnabled: true,
-                redirectUris: [
-                    'http://localhost:3000/*',
-                    'http://localhost:3000/api/auth/callback/keycloak',
-                    'http://localhost:3001/*',
-                    'http://localhost:3001/api/auth/callback/keycloak',
-                ],
-                webOrigins: ['http://localhost:3000', 'http://localhost:3001'],
+                rootUrl: FRONTEND_URL,
+                baseUrl: `${FRONTEND_URL.replace(/\/+$/, '')}/auth/signin`,
+                redirectUris: buildRedirectUris(),
+                webOrigins: buildWebOrigins(),
                 protocol: 'openid-connect',
             });
             clientUuid = client.id;
             console.log(`✅ Created client '${CLIENT_ID}'`);
+        }
+
+        console.log('\n🧩 Configuring Keycloak user profile attributes...');
+        const profileUrl = `${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users/profile`;
+        const profileResponse = await fetch(profileUrl, {
+            headers: {
+                Authorization: `Bearer ${await kcAdminClient.getAccessToken()}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (profileResponse.ok) {
+            const profile = await profileResponse.json();
+            const customAttributes = [
+                {
+                    name: 'tenant_id',
+                    displayName: 'Tenant ID',
+                    permissions: { view: ['admin'], edit: ['admin'] },
+                    multivalued: false,
+                },
+                {
+                    name: 'site_ids',
+                    displayName: 'Site IDs',
+                    permissions: { view: ['admin'], edit: ['admin'] },
+                    multivalued: true,
+                },
+                {
+                    name: 'role',
+                    displayName: 'Application Role',
+                    permissions: { view: ['admin'], edit: ['admin'] },
+                    multivalued: false,
+                },
+            ];
+            const existingNames = new Set((profile.attributes ?? []).map((attr: any) => attr.name));
+            for (const attribute of customAttributes) {
+                if (!existingNames.has(attribute.name)) {
+                    profile.attributes = [...(profile.attributes ?? []), attribute];
+                }
+            }
+            profile.unmanagedAttributePolicy = 'ADMIN_EDIT';
+
+            await fetch(profileUrl, {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${await kcAdminClient.getAccessToken()}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(profile),
+            });
+            console.log('✅ User profile attributes configured (tenant_id, site_ids, role)');
+        } else {
+            console.warn(`⚠️  Could not configure user profile (status ${profileResponse.status})`);
         }
 
         // Create or Update protocol mappers
@@ -134,6 +255,20 @@ async function setupKeycloak() {
                     'access.token.claim': 'true',
                     'userinfo.token.claim': 'true',
                     'multivalued': 'true',
+                },
+            },
+            {
+                name: 'role',
+                protocol: 'openid-connect',
+                protocolMapper: 'oidc-usermodel-attribute-mapper',
+                config: {
+                    'user.attribute': 'role',
+                    'claim.name': 'role',
+                    'jsonType.label': 'String',
+                    'id.token.claim': 'true',
+                    'access.token.claim': 'true',
+                    'userinfo.token.claim': 'true',
+                    'aggregate.attrs': 'true',
                 },
             },
             {
@@ -210,6 +345,16 @@ async function setupKeycloak() {
         }
         // ------------------------------------------------------------------
 
+        // Optionally force a known secret (docker-compose.dev / local stacks)
+        const desiredSecret = process.env.KEYCLOAK_CLIENT_SECRET;
+        if (desiredSecret) {
+            await kcAdminClient.clients.update(
+                { id: clientUuid },
+                { secret: desiredSecret },
+            );
+            console.log('\n🔑 Client secret set from KEYCLOAK_CLIENT_SECRET');
+        }
+
         // Get and print Client Secret
         const secretStruct = await kcAdminClient.clients.getClientSecret({ id: clientUuid });
         const clientSecret = secretStruct.value;
@@ -251,34 +396,84 @@ async function setupKeycloak() {
                 roles: ['Admin_Tenant'],
                 attributes: {
                     tenant_id: ['550e8400-e29b-41d4-a716-446655440001'],
+                    role: ['Admin_Tenant'],
+                },
+            },
+            {
+                username: 'admin_site',
+                email: 'admin.site@tenant1.local',
+                firstName: 'Agency',
+                lastName: 'Admin',
+                roles: ['Admin_Site'],
+                attributes: {
+                    tenant_id: ['550e8400-e29b-41d4-a716-446655440001'],
+                    site_ids: ['660e8400-e29b-41d4-a716-446655440001'],
+                    role: ['Admin_Site'],
+                },
+            },
+            {
+                username: 'user_site',
+                email: 'user.site@tenant1.local',
+                firstName: 'Agency',
+                lastName: 'Operator',
+                roles: ['User_Site'],
+                attributes: {
+                    tenant_id: ['550e8400-e29b-41d4-a716-446655440001'],
+                    site_ids: ['660e8400-e29b-41d4-a716-446655440001'],
+                    role: ['User_Site'],
                 },
             },
         ];
 
         for (const userData of testUsers) {
-            const existingUsers = await kcAdminClient.users.find({
+            // Keycloak username search is a substring match unless filtered exactly.
+            const found = await kcAdminClient.users.find({
                 username: userData.username,
-                realm: REALM_NAME
+                realm: REALM_NAME,
+                exact: true,
             });
+            const existing = found.find(
+                (u) => (u.username || '').toLowerCase() === userData.username.toLowerCase(),
+            );
 
             let userId: string;
-            if (existingUsers.length > 0) {
-                console.log(`ℹ️  User '${userData.username}' already exists. Deleting and recreating...`);
-                await kcAdminClient.users.del({ id: existingUsers[0].id!, realm: REALM_NAME });
+            if (existing?.id) {
+                userId = existing.id;
+                console.log(`ℹ️  User '${userData.username}' already exists. Updating...`);
+                await kcAdminClient.users.update(
+                    { id: userId, realm: REALM_NAME },
+                    {
+                        email: userData.email,
+                        firstName: userData.firstName,
+                        lastName: userData.lastName,
+                        enabled: true,
+                        emailVerified: true,
+                        attributes: userData.attributes,
+                    },
+                );
+                console.log(`✅ Updated user '${userData.username}'`);
+            } else {
+                const user = await kcAdminClient.users.create({
+                    username: userData.username,
+                    email: userData.email,
+                    firstName: userData.firstName,
+                    lastName: userData.lastName,
+                    enabled: true,
+                    emailVerified: true,
+                    attributes: userData.attributes,
+                    realm: REALM_NAME,
+                });
+                userId = user.id;
+                console.log(`✅ Created user '${userData.username}'`);
             }
 
-            // Create user
-            const user = await kcAdminClient.users.create({
-                username: userData.username,
-                email: userData.email,
-                firstName: userData.firstName,
-                lastName: userData.lastName,
-                enabled: true,
-                emailVerified: true,
-                realm: REALM_NAME
-            });
-            userId = user.id;
-            console.log(`✅ Created user '${userData.username}'`);
+            if (Object.keys(userData.attributes ?? {}).length > 0) {
+                await kcAdminClient.users.update(
+                    { id: userId, realm: REALM_NAME },
+                    { attributes: userData.attributes },
+                );
+                console.log(`✅ Persisted user attributes for '${userData.username}'`);
+            }
 
             // Set password
             await kcAdminClient.users.resetPassword({
@@ -290,27 +485,6 @@ async function setupKeycloak() {
                 },
                 realm: REALM_NAME
             });
-
-            // GROUP ASSIGNMENT STRATEGY (Fix for missing attributes)
-            if (userData.attributes?.tenant_id) {
-                const groupName = `TenantGroup_${userData.username}`;
-                console.log(`Creating Group '${groupName}' for attributes...`);
-
-                // 1. Create Group with Attributes
-                const group = await kcAdminClient.groups.create({
-                    name: groupName,
-                    attributes: userData.attributes, // Assign attributes to Group
-                    realm: REALM_NAME
-                });
-
-                // 2. Add User to Group
-                await kcAdminClient.users.addToGroup({
-                    id: userId,
-                    groupId: group.id!,
-                    realm: REALM_NAME
-                });
-                console.log(`✅ Assigned user '${userData.username}' to group '${groupName}' (with attributes)`);
-            }
 
             // Assign roles (Realm and Client)
             for (const roleName of userData.roles) {
@@ -383,6 +557,8 @@ async function setupKeycloak() {
         console.log(`   Test users:`);
         console.log(`     - superadmin / password123`);
         console.log(`     - admin_tenant / password123`);
+        console.log(`     - admin_site / password123`);
+        console.log(`     - user_site / password123`);
     } catch (error) {
         console.error('❌ Error setting up Keycloak:', error);
         process.exit(1);

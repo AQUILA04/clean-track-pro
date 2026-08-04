@@ -2,18 +2,30 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { StorageService, StorageSlot, CreateStorageSlotDto } from '@/services/storage.service';
-import { StorageSlotList } from '@/components/storage/StorageSlotList';
+import {
+    StorageService,
+    StorageSlot,
+    CreateStorageSlotDto,
+} from '@/services/storage.service';
+import { StorageSlotGrid } from '@/components/storage/StorageSlotGrid';
+import { SlotContentsModal } from '@/components/storage/SlotContentsModal';
 import { CreateSlotModal } from '@/components/storage/CreateSlotModal';
+import { Button } from '@/components/ui/Button';
+import { Plus } from 'lucide-react';
+import { canManageStorageSlots, getSiteIdFromSession, getSessionRoles } from '@/lib/roles';
+import { useToast } from '@/components/ui/simple-toast';
 
 export default function StoragePage() {
     const { data: session } = useSession();
+    const { toast } = useToast();
     const [slots, setSlots] = useState<StorageSlot[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedSlot, setSelectedSlot] = useState<StorageSlot | null>(null);
 
-    // Default to first site or empty string if not available
-    const siteId = (session?.user as any)?.site_ids?.[0] || '';
+    const siteId = getSiteIdFromSession(session?.user as Record<string, unknown> | undefined);
+    const userRoles = getSessionRoles(session?.user);
+    const canManage = canManageStorageSlots(userRoles);
 
     const fetchSlots = async () => {
         if (!siteId) {
@@ -26,6 +38,11 @@ export default function StoragePage() {
             setSlots(data);
         } catch (error) {
             console.error('Failed to fetch slots', error);
+            toast({
+                title: 'Erreur',
+                description: 'Impossible de charger les rayons de stockage.',
+                variant: 'destructive',
+            });
         } finally {
             setIsLoading(false);
         }
@@ -39,45 +56,57 @@ export default function StoragePage() {
 
     const handleCreate = async (data: CreateStorageSlotDto) => {
         await StorageService.create(data);
+        toast({
+            title: 'Rayon créé',
+            description: `Le rayon ${data.name} a été ajouté.`,
+            variant: 'success',
+        });
         fetchSlots();
     };
 
-    // Check for admin role
-    const userRoles = (session?.user as any)?.roles || [];
-    const isAdmin = userRoles.includes('realm:Admin_Site') || userRoles.includes('realm:Super_Admin') || userRoles.includes('Admin_Site'); // Flexible check
-
     if (!session) {
-        return <div className="p-8 text-center">Please log in to manage storage.</div>;
+        return (
+            <div className="p-8 text-center text-muted-foreground">
+                Connectez-vous pour gérer le stockage.
+            </div>
+        );
     }
 
     if (!siteId) {
-        return <div className="p-8 text-center">No site assigned to your account. Please contact administrator.</div>;
+        return (
+            <div className="p-8 text-center text-muted-foreground">
+                Aucun site associé à votre compte. Contactez l&apos;administrateur.
+            </div>
+        );
     }
 
     return (
         <div className="px-4 sm:px-6 lg:px-8 py-8">
-            <div className="sm:flex sm:items-center">
+            <div className="sm:flex sm:items-center sm:justify-between gap-4">
                 <div className="sm:flex-auto">
-                    <h1 className="text-base font-semibold leading-6 text-gray-900">Storage Configuration</h1>
-                    <p className="mt-2 text-sm text-gray-700">
-                        Manage physical storage slots for your facility.
+                    <h1 className="text-2xl font-bold text-foreground">Occupation visuelle des rayons</h1>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        Suivi en temps réel de la capacité de stockage de l&apos;agence.
                     </p>
                 </div>
-                <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-                    {isAdmin && (
-                        <button
-                            type="button"
+                {canManage && (
+                    <div className="mt-4 sm:mt-0 shrink-0">
+                        <Button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            icon={<Plus className="h-4 w-4" />}
                         >
-                            Add Slot
-                        </button>
-                    )}
-                </div>
+                            Créer un rayon
+                        </Button>
+                    </div>
+                )}
             </div>
 
-            <div className="mt-8 flow-root">
-                <StorageSlotList slots={slots} isLoading={isLoading} />
+            <div className="mt-8">
+                <StorageSlotGrid
+                    slots={slots}
+                    isLoading={isLoading}
+                    onOccupiedClick={setSelectedSlot}
+                />
             </div>
 
             <CreateSlotModal
@@ -85,6 +114,12 @@ export default function StoragePage() {
                 onClose={() => setIsCreateModalOpen(false)}
                 onSubmit={handleCreate}
                 siteId={siteId}
+            />
+
+            <SlotContentsModal
+                slot={selectedSlot}
+                isOpen={!!selectedSlot}
+                onClose={() => setSelectedSlot(null)}
             />
         </div>
     );

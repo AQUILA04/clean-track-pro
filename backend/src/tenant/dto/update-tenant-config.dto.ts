@@ -1,23 +1,41 @@
-import { IsNumber, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsNumber, IsObject, IsString, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { POPULAR_CURRENCY_CODES } from '../constants/currencies';
+
+class ExpressVisibilityDto {
+  @IsBoolean()
+  showTTC: boolean;
+
+  @IsBoolean()
+  allowDiscounts: boolean;
+
+  @IsBoolean()
+  showInventory: boolean;
+}
 
 export class UpdateTenantConfigDto {
-    @IsNumber()
-    @Min(1.0)
-    express_multiplier: number;
+  @IsNumber()
+  @Min(1.0)
+  express_multiplier: number;
 
-    @IsNumber()
-    @Min(1)
-    express_sla_hours: number;
+  @IsNumber()
+  @Min(1)
+  express_sla_hours: number;
 
-    express_enabled: boolean;
+  @IsBoolean()
+  express_enabled: boolean;
 
-    currency: string;
+  @IsString()
+  @IsIn([...POPULAR_CURRENCY_CODES], {
+    message: `currency must be one of: ${POPULAR_CURRENCY_CODES.join(', ')}`,
+  })
+  currency: string;
 
-    weight_unit: string;
+  @IsString()
+  weight_unit: string;
 
-    express_visibility: {
-        showTTC: boolean;
-        allowDiscounts: boolean;
-        showInventory: boolean;
-    };
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ExpressVisibilityDto)
+  express_visibility: ExpressVisibilityDto;
 }

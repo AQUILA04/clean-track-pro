@@ -16,25 +16,25 @@ interface TableProps<T> {
 
 export const Table = <T,>({ data, columns, keyExtractor, onRowClick, emptyMessage = "No data found" }: TableProps<T>) => {
     return (
-        <div className="overflow-x-auto shadow-sm border border-gray-200 rounded-lg">
-            <table className="min-w-full divide-y divide-gray-300">
-                <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            <table className="min-w-full divide-y divide-border">
+                <thead className="bg-muted/30">
                     <tr>
                         {columns.map((col, idx) => (
                             <th
                                 key={idx}
                                 scope="col"
-                                className={`py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 ${col.className || ''}`}
+                                className={`py-3.5 pl-4 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:pl-6 ${col.className || ''}`}
                             >
                                 {col.header}
                             </th>
                         ))}
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
+                <tbody className="divide-y divide-border">
                     {data.length === 0 ? (
                         <tr>
-                            <td colSpan={columns.length} className="py-4 text-center text-sm text-gray-500">
+                            <td colSpan={columns.length} className="py-6 text-center text-sm text-muted-foreground">
                                 {emptyMessage}
                             </td>
                         </tr>
@@ -43,12 +43,12 @@ export const Table = <T,>({ data, columns, keyExtractor, onRowClick, emptyMessag
                             <tr
                                 key={keyExtractor(item)}
                                 onClick={() => onRowClick && onRowClick(item)}
-                                className={onRowClick ? "cursor-pointer hover:bg-gray-50" : ""}
+                                className={`${onRowClick ? "cursor-pointer" : ""} hover:bg-muted/30 transition-colors`}
                             >
                                 {columns.map((col, idx) => (
                                     <td
                                         key={idx}
-                                        className={`whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 ${col.className || ''}`}
+                                        className={`whitespace-nowrap py-4 pl-4 pr-3 text-sm text-foreground sm:pl-6 ${col.className || ''}`}
                                     >
                                         {typeof col.accessor === 'function'
                                             ? col.accessor(item)

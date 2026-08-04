@@ -9,6 +9,11 @@ export class Client {
     @Column({ type: 'uuid' })
     tenant_id: string;
 
+    /** Agency where the client was created (provenance). Immutable after create. */
+    @Index()
+    @Column({ type: 'uuid', nullable: true })
+    site_id: string | null;
+
     // GIN indexes with pg_trgm extension are managed via migration (EnablePgTrgmAndGinIndexes1769350800000)
     // These support efficient ILIKE '%substring%' queries for the search endpoint
     @Column()

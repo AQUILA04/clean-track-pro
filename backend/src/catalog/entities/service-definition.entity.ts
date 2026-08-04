@@ -15,4 +15,8 @@ export class ServiceDefinition extends BaseEntity {
 
     @Column({ type: 'boolean', default: true })
     is_active: boolean;
+
+    /** Built-in services seeded per tenant (Lavage, Repassage). */
+    @Column({ type: 'boolean', default: false })
+    is_system: boolean;
 }

@@ -10,50 +10,48 @@ interface AgencyFiltersProps {
 export const AgencyFilters: React.FC<AgencyFiltersProps> = ({ currentFilter, onFilterChange, totalCount }) => {
     const getButtonClass = (isActive: boolean) =>
         isActive
-            ? "px-4 py-2 rounded-full bg-primary text-white text-sm font-medium shadow-sm shadow-blue-200"
-            : "px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2";
+            ? 'px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-medium transition-all duration-150'
+            : 'px-4 py-2 rounded-full bg-card border border-border text-muted-foreground text-sm font-medium hover:bg-muted/50 transition-colors duration-150 flex items-center gap-2';
 
     return (
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div className="flex flex-wrap items-center gap-2">
-                {/* All Agencies */}
                 <button
                     onClick={() => onFilterChange('ALL')}
                     className={getButtonClass(currentFilter === 'ALL')}
                 >
-                    Toutes les agences <span className={`ml-1 ${currentFilter === 'ALL' ? 'opacity-80' : 'text-gray-500'}`}>{totalCount}</span>
+                    Toutes les agences{' '}
+                    <span className={`ml-1 ${currentFilter === 'ALL' ? 'opacity-80' : 'text-muted-foreground'}`}>
+                        {totalCount}
+                    </span>
                 </button>
 
-                {/* Active */}
                 <button
                     onClick={() => onFilterChange('ACTIVE')}
                     className={getButtonClass(currentFilter === 'ACTIVE')}
                 >
-                    <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
                     Actives
                 </button>
 
-                {/* Inactive (Fermées) */}
                 <button
                     onClick={() => onFilterChange('INACTIVE')}
                     className={getButtonClass(currentFilter === 'INACTIVE')}
                 >
-                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                    <span className="w-2 h-2 rounded-full bg-red-400" />
                     Fermées
                 </button>
 
-                {/* Maintenance */}
                 <button
                     onClick={() => onFilterChange('MAINTENANCE')}
                     className={getButtonClass(currentFilter === 'MAINTENANCE')}
                 >
-                    <span className="w-2 h-2 rounded-full bg-orange-400" />
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
                     En maintenance
                 </button>
             </div>
 
-            {/* Advanced Filters Button */}
-            <button className="px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium transition-colors flex items-center gap-2">
+            <button className="px-4 py-2 rounded-full bg-muted hover:bg-muted/80 text-foreground text-sm font-medium transition-colors duration-150 flex items-center gap-2">
                 <Filter size={14} />
                 Filtres avancés
             </button>

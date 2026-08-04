@@ -4,7 +4,29 @@ Application SaaS multi-tenant pour la gestion de pressing avec suivi en temps r�
 
 ## 🚀 Quick Start - Setup Automatisé
 
-Pour démarrer l'environnement complet avec une seule commande :
+### Option A — Stack Docker complète (recommandé derrière proxy d’entreprise)
+
+Prérequis : placer `cert/ZscalerRootCA.pem` (voir `cert/README.md`).
+
+```bash
+npm run dev:up
+# équivalent : docker compose -f docker-compose.dev.yml up -d --build
+```
+
+Cela démarre PostgreSQL, Redis, MailDev, Keycloak (image avec CA Zscaler), configure le realm/users, puis le backend et le frontend.
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3001 |
+| Backend API | http://localhost:3000 |
+| Keycloak | http://localhost:8080 (`admin` / `admin`) |
+| MailDev | http://localhost:1080 |
+
+Arrêt : `npm run dev:down` — reset volumes : `npm run dev:reset`
+
+### Option B — Infra Docker + apps en local
+
+Pour démarrer l'environnement avec une seule commande :
 
 ```bash
 ./setup.sh

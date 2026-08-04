@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { Building2, MapPin, UploadCloud, X, Edit2, Mail, Phone, Globe } from 'lucide-react';
+import { Building2, MapPin, UploadCloud, X, Edit2, Mail, Phone } from 'lucide-react';
 import { SiteService, Site } from '@/services/site.service';
 import { StorageService } from '@/services/storage.service';
 
@@ -53,15 +53,28 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+        // Allow re-selecting the same file later
+        e.target.value = '';
         if (!file) return;
 
+        if (!file.type.startsWith('image/')) {
+            alert('Veuillez sélectionner une image (PNG, JPEG ou SVG).');
+            return;
+        }
+
+        const localPreview = URL.createObjectURL(file);
+        setFormData((prev) => ({ ...prev, logoUrl: localPreview }));
         setUploading(true);
+
         try {
             const url = await StorageService.uploadFile(file);
-            setFormData(prev => ({ ...prev, logoUrl: url }));
+            URL.revokeObjectURL(localPreview);
+            setFormData((prev) => ({ ...prev, logoUrl: url }));
         } catch (error) {
             console.error('Upload failed', error);
-            alert('Failed to upload logo');
+            URL.revokeObjectURL(localPreview);
+            setFormData((prev) => ({ ...prev, logoUrl: initialData?.logoUrl || '' }));
+            alert(error instanceof Error ? error.message : 'Échec du téléversement du logo');
         } finally {
             setUploading(false);
         }
@@ -94,6 +107,9 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
         }
     };
 
+    const labelClass = 'text-sm font-medium text-muted-foreground';
+    const iconClass = 'absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4';
+
     return (
         <Modal isOpen={isOpen} onClose={onClose}>
             <div className="mb-6">
@@ -101,20 +117,21 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
                     <div className="p-1 bg-primary/10 rounded">
                         <Building2 size={16} className="text-primary" />
                     </div>
-                    <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">Admin Panel</span>
+                    <span className="text-xs font-bold text-muted-foreground tracking-wider uppercase">Admin Panel</span>
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">
-                    {isEditMode ? "Modifier l'agence" : "Ajouter une nouvelle agence"}
+                <h2 className="text-xl font-bold text-foreground">
+                    {isEditMode ? "Modifier l'agence" : 'Ajouter une nouvelle agence'}
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                    {isEditMode ? "Mettez à jour les informations de ce point de service." : "Configurez les détails de votre nouveau point de service."}
+                <p className="text-sm text-muted-foreground mt-1">
+                    {isEditMode
+                        ? 'Mettez à jour les informations de ce point de service.'
+                        : 'Configurez les détails de votre nouveau point de service.'}
                 </p>
             </div>
 
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                {/* Agency Name */}
                 <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Nom de l'agence</label>
+                    <label className={labelClass}>Nom de l&apos;agence</label>
                     <Input
                         placeholder="Ex: Agence Centre-Ville"
                         className="w-full"
@@ -123,11 +140,10 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
                     />
                 </div>
 
-                {/* Status Selection (Only if Edit, or allowed on Create?) */}
                 <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Statut</label>
+                    <label className={labelClass}>Statut</label>
                     <select
-                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="w-full rounded-md border border-border bg-card text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         value={formData.status}
                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     >
@@ -137,10 +153,9 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
                     </select>
                 </div>
 
-                {/* Address Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2 space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Adresse</label>
+                        <label className={labelClass}>Adresse</label>
                         <div className="relative">
                             <Input
                                 placeholder="Numéro et rue..."
@@ -148,12 +163,12 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
                                 value={formData.location}
                                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                             />
-                            <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <MapPin className={iconClass} />
                         </div>
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Ville</label>
+                        <label className={labelClass}>Ville</label>
                         <Input
                             placeholder="Ex: Paris"
                             value={formData.city}
@@ -162,7 +177,7 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Code Postal</label>
+                        <label className={labelClass}>Code Postal</label>
                         <Input
                             placeholder="Ex: 75001"
                             value={formData.postal_code}
@@ -171,10 +186,9 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
                     </div>
                 </div>
 
-                {/* Contact Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Téléphone</label>
+                        <label className={labelClass}>Téléphone</label>
                         <div className="relative">
                             <Input
                                 placeholder="+33 ..."
@@ -182,11 +196,11 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                             />
-                            <Phone className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <Phone className={iconClass} />
                         </div>
                     </div>
                     <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Email</label>
+                        <label className={labelClass}>Email</label>
                         <div className="relative">
                             <Input
                                 placeholder="agence@..."
@@ -194,14 +208,13 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             />
-                            <Mail className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <Mail className={iconClass} />
                         </div>
                     </div>
                 </div>
 
-                {/* Logo Upload */}
                 <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700">Logo de l'agence</label>
+                    <label className={labelClass}>Logo de l&apos;agence</label>
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -213,52 +226,70 @@ export const AgencyFormModal: React.FC<AgencyFormModalProps> = ({ isOpen, onClos
                     {!formData.logoUrl ? (
                         <div
                             onClick={() => fileInputRef.current?.click()}
-                            className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer group"
+                            className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center text-center bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group"
                         >
-                            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
                                 {uploading ? (
                                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
                                 ) : (
                                     <UploadCloud className="h-5 w-5 text-primary" />
                                 )}
                             </div>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-muted-foreground">
                                 <span className="font-semibold text-primary">Cliquez pour parcourir</span> ou glissez-déposez
                             </p>
                         </div>
                     ) : (
-                        <div className="relative w-full h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 group">
+                        <div className="relative w-full h-32 bg-muted rounded-lg overflow-hidden border border-border group">
                             <img src={formData.logoUrl} alt="Logo Preview" className="w-full h-full object-contain" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100 text-gray-700"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setFormData(prev => ({ ...prev, logoUrl: '' }))}
-                                    className="p-2 bg-white rounded-full shadow-md hover:bg-red-50 text-red-600"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
+                            {uploading && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
+                                </div>
+                            )}
+                            {!uploading && (
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="p-2 bg-card rounded-full border border-border hover:bg-muted text-foreground"
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData((prev) => ({ ...prev, logoUrl: '' }))}
+                                        className="p-2 bg-card rounded-full border border-border hover:bg-red-500/10 text-red-400"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Footer Actions */}
-            <div className="mt-8 flex justify-end gap-3 border-t pt-4">
-                <Button variant="ghost" className="text-gray-700 hover:bg-gray-100 hover:text-gray-900" onClick={onClose}>
+            <div className="mt-8 flex justify-end gap-3 border-t border-border pt-4">
+                <Button
+                    variant="ghost"
+                    className="text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    onClick={onClose}
+                >
                     Annuler
                 </Button>
                 <Button
-                    className="bg-primary hover:bg-blue-700 text-white min-w-[100px]"
+                    className="bg-primary hover:bg-blue-600 text-white min-w-[100px]"
                     onClick={handleSubmit}
                     disabled={loading || uploading || !formData.name}
                 >
-                    {loading ? (isEditMode ? 'Modification...' : 'Ajout...') : (isEditMode ? 'Enregistrer' : 'Ajouter')}
+                    {loading
+                        ? isEditMode
+                            ? 'Modification...'
+                            : 'Ajout...'
+                        : isEditMode
+                          ? 'Enregistrer'
+                          : 'Ajouter'}
                 </Button>
             </div>
         </Modal>

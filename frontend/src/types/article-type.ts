@@ -2,6 +2,9 @@ export interface ArticleType {
     id: string;
     tenant_id: string;
     label: string;
+    // UI compatibility fields used by catalogue components/tests
+    name?: string;
+    articleId?: string;
     category: string;
     is_active: boolean;
     created_at: string;

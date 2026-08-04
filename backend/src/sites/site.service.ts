@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Site } from './entities/site.entity';
 import { CreateSiteDto } from './dto/create-site.dto';
 import { RlsService } from '../shared/database/rls/rls.service';
+import { OperationKey } from '../subscription/enums/operation-key.enum';
+import { QuotaService } from '../subscription/services/quota.service';
 
 @Injectable()
 export class SiteService {
@@ -11,16 +13,58 @@ export class SiteService {
         @InjectRepository(Site)
         private siteRepository: Repository<Site>,
         private readonly rls: RlsService,
+        private readonly dataSource: DataSource,
+        private readonly quotaService: QuotaService,
     ) { }
 
-    async create(tenantId: string, createSiteDto: CreateSiteDto): Promise<Site> {
-        return this.rls.wrapTransaction(async (manager) => {
+    /**
+     * Creates a site during tenant bootstrap, before tenant context exists in CLS.
+     * Sets RLS tenant context explicitly for the new tenant.
+     */
+    async createForTenantBootstrap(tenantId: string, createSiteDto: CreateSiteDto): Promise<Site> {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(tenantId)) {
+            throw new BadRequestException('Invalid tenant ID');
+        }
+
+        return this.dataSource.transaction(async (manager) => {
+            await manager.query(`SET LOCAL "app.current_tenant" = '${tenantId}'`);
+            const nextCode = await this.nextSiteCode(manager, tenantId);
             const newSite = manager.create(Site, {
                 ...createSiteDto,
                 tenant_id: tenantId,
+                code: nextCode,
+                status: createSiteDto.status ?? 'ACTIVE',
             });
             return manager.save(Site, newSite);
         });
+    }
+
+    async create(tenantId: string, createSiteDto: CreateSiteDto): Promise<Site> {
+        await this.quotaService.assertWithinQuota(tenantId, OperationKey.SITES_CAPACITY);
+
+        return this.rls.wrapTransaction(async (manager) => {
+            const nextCode = await this.nextSiteCode(manager, tenantId);
+            const newSite = manager.create(Site, {
+                ...createSiteDto,
+                tenant_id: tenantId,
+                code: nextCode,
+            });
+            return manager.save(Site, newSite);
+        });
+    }
+
+    private async nextSiteCode(manager: EntityManager, tenantId: string): Promise<number> {
+        const raw = await manager
+            .createQueryBuilder(Site, 'site')
+            .select('COALESCE(MAX(site.code), 0)', 'max')
+            .where('site.tenant_id = :tenantId', { tenantId })
+            .getRawOne<{ max: string | number }>();
+        const next = Number(raw?.max ?? 0) + 1;
+        if (next > 99) {
+            throw new BadRequestException('Limite de 99 agences par tenant atteinte (codes REF).');
+        }
+        return next;
     }
 
     async findAll(tenantId: string, search?: string): Promise<Site[]> {

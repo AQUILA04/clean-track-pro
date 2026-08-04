@@ -26,6 +26,13 @@ jobs:
             - 'frontend/**'
           backend:
             - 'backend/**'
+          e2e:
+            - 'tests/**'
+            - 'playwright.config.ts'
+            - 'scripts/e2e/**'
+            - 'frontend/**'
+            - 'backend/**'
+            - 'docker-compose.yml'
 
   build-backend:
     needs: changes
@@ -77,6 +84,8 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./backend
+        build-contexts: |
+          certs=cert
         push: true
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-backend:${{ github.sha }}
@@ -133,6 +142,8 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./frontend
+        build-contexts: |
+          certs=cert
         push: true
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-frontend:${{ github.sha }}

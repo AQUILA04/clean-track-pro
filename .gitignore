@@ -5,6 +5,9 @@ node_modules
 
 # Testing
 coverage
+playwright-report/
+test-results/
+tests/.auth/
 
 # Production
 dist
@@ -14,6 +17,7 @@ out
 # Misc
 .DS_Store
 *.pem
+!cert/ZscalerRootCA.pem
 
 # Debug
 npm-debug.log*
@@ -26,6 +30,9 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.e2e.generated
+backend/.env.e2e.generated
+frontend/.env.e2e.generated
 
 # IDEs
 .vscode

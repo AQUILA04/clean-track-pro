@@ -9,24 +9,36 @@ interface StorageSlotListProps {
 
 export const StorageSlotList: React.FC<StorageSlotListProps> = ({ slots, isLoading }) => {
     if (isLoading) {
-        return <div className="text-center py-4">Loading slots...</div>;
+        return <div className="text-center py-4 text-muted-foreground">Loading slots...</div>;
     }
 
     const getStatusColor = (status: StorageSlotStatus) => {
         switch (status) {
             case StorageSlotStatus.FREE:
-                return 'bg-green-100 text-green-800';
+                return 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400';
             case StorageSlotStatus.OCCUPIED:
-                return 'bg-red-100 text-red-800';
+                return 'bg-muted border border-border text-muted-foreground';
             case StorageSlotStatus.RESERVED:
-                return 'bg-yellow-100 text-yellow-800';
+                return 'bg-amber-500/10 border border-amber-500/30 text-amber-400';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-muted border border-border text-muted-foreground';
         }
     };
 
     const columns = [
         { header: 'Name', accessor: 'name' as keyof StorageSlot },
+        {
+            header: 'Type',
+            accessor: (slot: StorageSlot) => (
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    slot.slot_type === 'DELIVERY'
+                        ? 'bg-blue-500/10 text-blue-400'
+                        : 'bg-purple-500/10 text-purple-400'
+                }`}>
+                    {slot.slot_type === 'DELIVERY' ? 'Livraison' : 'Réception'}
+                </span>
+            ),
+        },
         {
             header: 'Status',
             accessor: (slot: StorageSlot) => (
@@ -40,11 +52,13 @@ export const StorageSlotList: React.FC<StorageSlotListProps> = ({ slots, isLoadi
     ];
 
     return (
-        <Table
-            data={slots}
-            columns={columns}
-            keyExtractor={(slot) => slot.id}
-            emptyMessage="No storage slots configured yet."
-        />
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <Table
+                data={slots}
+                columns={columns}
+                keyExtractor={(slot) => slot.id}
+                emptyMessage="No storage slots configured yet."
+            />
+        </div>
     );
 };

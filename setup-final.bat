@@ -220,6 +220,25 @@ cd ..
 echo [SUCCESS] Migrations completed
 echo.
 
+REM Step 5b: Seed dev data (tenant, site, catalog)
+echo ========================================
+echo Step 5b/6: Seeding development data
+echo ========================================
+echo.
+
+echo [INFO] Seeding tenant, site, and catalog data...
+cd backend
+call npx ts-node scripts/seed-e2e-data.ts
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to seed development data
+    pause
+    exit /b 1
+)
+cd ..
+
+echo [SUCCESS] Development data seeded
+echo.
+
 REM Step 6: Summary
 echo ========================================
 echo Step 6/6: Setup Complete!
@@ -237,6 +256,8 @@ echo.
 echo Test Users:
 echo   - superadmin / password123
 echo   - admin_tenant / password123
+echo   - admin_site / password123
+echo   - user_site / password123
 echo.
 echo To start the application:
 echo   Option 1 - Start all at once:

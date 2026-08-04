@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { StorageSlotList } from '@/components/storage/StorageSlotList';
-import { StorageSlotStatus } from '@/services/storage.service';
+import { StorageSlotStatus, SlotType } from '@/services/storage.service';
 
 describe('StorageSlotList', () => {
     const mockSlots = [
@@ -9,6 +9,7 @@ describe('StorageSlotList', () => {
             id: '1',
             name: 'A-01',
             status: StorageSlotStatus.FREE,
+            slot_type: SlotType.RECEPTION,
             site_id: 'site-1',
             tenant_id: 'tenant-1',
             created_at: '2023-01-01',
@@ -18,6 +19,7 @@ describe('StorageSlotList', () => {
             id: '2',
             name: 'A-02',
             status: StorageSlotStatus.OCCUPIED,
+            slot_type: SlotType.DELIVERY,
             site_id: 'site-1',
             tenant_id: 'tenant-1',
             created_at: '2023-01-02',
@@ -38,22 +40,13 @@ describe('StorageSlotList', () => {
     it('renders list of slots with correct status styles', () => {
         render(<StorageSlotList slots={mockSlots} isLoading={false} />);
 
-        // Verify first slot (FREE)
-        const slot1Name = screen.getByText('A-01');
-        const slot1Row = slot1Name.closest('tr');
-        expect(slot1Row).toBeInTheDocument();
+        expect(screen.getByText('A-01')).toBeInTheDocument();
+        expect(screen.getByText('A-02')).toBeInTheDocument();
 
-        const slot1Status = screen.getByText('FREE');
-        expect(slot1Status).toBeInTheDocument();
-        expect(slot1Status).toHaveClass('bg-green-100', 'text-green-800');
+        const freeStatus = screen.getByText('FREE');
+        expect(freeStatus).toHaveClass('bg-emerald-500/15');
 
-        // Verify second slot (OCCUPIED)
-        const slot2Name = screen.getByText('A-02');
-        const slot2Row = slot2Name.closest('tr');
-        expect(slot2Row).toBeInTheDocument();
-
-        const slot2Status = screen.getByText('OCCUPIED');
-        expect(slot2Status).toBeInTheDocument();
-        expect(slot2Status).toHaveClass('bg-red-100', 'text-red-800');
+        const occupiedStatus = screen.getByText('OCCUPIED');
+        expect(occupiedStatus).toHaveClass('bg-muted');
     });
 });

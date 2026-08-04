@@ -15,8 +15,18 @@ import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
 import { StorageModule } from './storage/storage.module';
 import { SiteModule } from './sites/site.module';
+import { PaymentsModule } from './payments/payments.module';
+import { CashRegisterModule } from './cash-register/cash-register.module';
+import { RemittancesModule } from './remittances/remittances.module';
+import { ExpensesModule } from './expenses/expenses.module';
+import { SubscriptionModule } from './subscription/subscription.module';
+import { SignupModule } from './signup/signup.module';
+import { LocalitiesModule } from './localities/localities.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { DeliveriesModule } from './deliveries/deliveries.module';
+import { FxModule } from './fx/fx.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { join, resolve } from 'path';
+import { resolve } from 'path';
 
 @Module({
   imports: [
@@ -53,6 +63,16 @@ import { join, resolve } from 'path';
     OrdersModule,
     StorageModule,
     SiteModule,
+    PaymentsModule,
+    CashRegisterModule,
+    RemittancesModule,
+    ExpensesModule,
+    SubscriptionModule,
+    SignupModule,
+    LocalitiesModule,
+    NotificationsModule,
+    DeliveriesModule,
+    FxModule,
   ],
   controllers: [AppController],
   providers: [AppService],

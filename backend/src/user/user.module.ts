@@ -1,16 +1,17 @@
 
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
-import { KeycloakService } from '../shared/keycloak/keycloak.service';
 import { KeycloakModule } from '../shared/keycloak/keycloak.module';
 import { ConfigModule } from '@nestjs/config';
 import { SiteModule } from '../sites/site.module';
-import { TenantModule } from '../tenant/tenant.module';
+import { Tenant } from '../tenant/entities/tenant.entity';
 
 @Module({
-    imports: [ConfigModule, KeycloakModule, SiteModule, TenantModule],
+    imports: [ConfigModule, KeycloakModule, SiteModule, TypeOrmModule.forFeature([Tenant])],
     controllers: [UserController],
     providers: [UserService],
+    exports: [UserService],
 })
 export class UserModule { }

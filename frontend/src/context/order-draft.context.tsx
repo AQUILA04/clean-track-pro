@@ -4,11 +4,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useSession } from 'next-auth/react';
 import { calculateOrderTotal, calculateDueDate } from '../utils/pricing.utils';
 import { TenantService } from '../services/tenant.service';
+import { SiteService } from '../services/site.service';
 import { OrdersService } from '../services/orders.service';
-import { ServiceLevel } from '../types/create-order.dto';
+import { ServiceLevel, PaymentMethod, DeliveryMode } from '../types/create-order.dto';
 import { useToast } from '../components/ui/simple-toast';
-import { PrintingService } from '../services/printing.service';
 import { PrintableOrder } from '../types/printing.types';
+import { getErrorMessage } from '../lib/api-error';
+import { DEFAULT_TENANT_CURRENCY, normalizeCurrencyCode } from '../lib/currencies';
+import { getSiteIdFromSession } from '../lib/roles';
 
 export interface OrderItemDraft {
     articleId: string;
@@ -23,22 +26,46 @@ export interface OrderItemDraft {
 interface OrderDraftState {
     clientId: string | null;
     clientName: string | null; // Cached for display
+    clientPhone: string | null;
     items: OrderItemDraft[];
     isExpress: boolean;
-    tenantConfig?: { express_multiplier: number; express_sla_hours: number };
+    deliveryMode: DeliveryMode;
+    deliveryAddress: string;
+    deliveryPhone: string;
+    localityId: string | null;
+    tenantConfig?: {
+        express_multiplier: number;
+        express_sla_hours: number;
+        currency?: string;
+        name?: string;
+        logoUrl?: string | null;
+        address?: string | null;
+        legal_id?: string | null;
+        vat_number?: string | null;
+    };
+    siteName?: string | null;
 }
 
 interface OrderDraftContextType extends OrderDraftState {
-    setClient: (clientId: string, clientName: string) => void;
+    setClient: (clientId: string, clientName: string, clientPhone?: string) => void;
+    clearClient: () => void;
     addItem: (item: Omit<OrderItemDraft, 'quantity'>) => void;
     updateQuantity: (index: number, delta: number) => void;
     updateService: (index: number, serviceId: string, serviceName: string, price: number) => void;
     removeItem: (index: number) => void;
     clearDraft: () => void;
     toggleExpress: () => void;
+    setDeliveryMode: (mode: DeliveryMode) => void;
+    setDeliveryAddress: (address: string) => void;
+    setDeliveryPhone: (phone: string) => void;
+    setLocalityId: (localityId: string | null) => void;
     totalPrice: number;
     estimatedDueDate: Date | null;
-    validateOrder: () => Promise<void>;
+    validateOrder: (paymentAmount?: number, paymentMethod?: PaymentMethod, paymentReference?: string) => Promise<void>;
+    pendingReceipt: PrintableOrder | null;
+    dismissReceipt: () => void;
+    pendingStorageOrderId: string | null;
+    completeStorageStep: () => void;
 }
 
 const OrderDraftContext = createContext<OrderDraftContextType | undefined>(undefined);
@@ -55,11 +82,18 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
     const [state, setState] = useState<OrderDraftState>({
         clientId: null,
         clientName: null,
+        clientPhone: null,
         items: [],
         isExpress: false,
+        deliveryMode: DeliveryMode.PICKUP,
+        deliveryAddress: '',
+        deliveryPhone: '',
+        localityId: null,
     });
 
     const [isLoaded, setIsLoaded] = useState(false);
+    const [pendingReceipt, setPendingReceipt] = useState<PrintableOrder | null>(null);
+    const [pendingStorageOrderId, setPendingStorageOrderId] = useState<string | null>(null);
 
     // Load from localStorage on mount or when tenantId changes
     useEffect(() => {
@@ -75,6 +109,11 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
                     ...parsed,
                     // Ensure new fields exist if loading old state
                     isExpress: parsed.isExpress ?? false,
+                    clientPhone: parsed.clientPhone ?? null,
+                    deliveryMode: parsed.deliveryMode ?? DeliveryMode.PICKUP,
+                    deliveryAddress: parsed.deliveryAddress ?? '',
+                    deliveryPhone: parsed.deliveryPhone ?? '',
+                    localityId: parsed.localityId ?? null,
                     tenantConfig: prev.tenantConfig // Keep config if we already fetched it, or it will be populated below
                 }));
             } catch (e) {
@@ -84,31 +123,48 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         setIsLoaded(true);
     }, [tenantId, storageKey]);
 
-    // Fetch Tenant Config
+    // Fetch Tenant Config + current agency name for receipts
     useEffect(() => {
         if (!tenantId) return;
         const fetchConfig = async () => {
             try {
                 const tenant = await TenantService.getCurrentTenant();
+                let siteName: string | null = null;
+                const siteId = getSiteIdFromSession(session?.user as Record<string, unknown> | undefined);
+                if (siteId) {
+                    try {
+                        const site = await SiteService.getById(siteId);
+                        siteName = site.name || null;
+                    } catch {
+                        siteName = null;
+                    }
+                }
                 setState(prev => ({
                     ...prev,
+                    siteName,
                     tenantConfig: {
                         express_multiplier: tenant.express_multiplier,
-                        express_sla_hours: tenant.express_sla_hours
-                    }
+                        express_sla_hours: tenant.express_sla_hours,
+                        currency: normalizeCurrencyCode(tenant.currency),
+                        name: tenant.name,
+                        logoUrl: tenant.logoUrl ?? null,
+                        address: tenant.address ?? null,
+                        legal_id: tenant.legal_id ?? null,
+                        vat_number: tenant.vat_number ?? null,
+                    },
                 }));
             } catch (e) {
                 console.error('Failed to fetch tenant config', e);
             }
         };
         fetchConfig();
-    }, [tenantId]);
+    }, [tenantId, session?.user]);
 
     // Save to localStorage on change
     useEffect(() => {
         if (isLoaded && tenantId) {
-            // Don't save tenantConfig to localstorage necessarily, mainly data
-            const { tenantConfig, ...toSave } = state;
+            // Don't persist branding/config — always refresh from API
+            const { tenantConfig, siteName, ...toSave } = state;
             localStorage.setItem(storageKey, JSON.stringify(toSave));
         }
     }, [state, isLoaded, tenantId, storageKey]);
@@ -130,8 +186,41 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         setState(prev => ({ ...prev, isExpress: !prev.isExpress }));
     }, []);
 
-    const setClient = useCallback((clientId: string, clientName: string) => {
-        setState(prev => ({ ...prev, clientId, clientName }));
+    const setClient = useCallback((clientId: string, clientName: string, clientPhone?: string) => {
+        setState(prev => ({
+            ...prev,
+            clientId,
+            clientName,
+            clientPhone: clientPhone ?? null,
+            deliveryPhone: prev.deliveryPhone || clientPhone || '',
+        }));
+    }, []);
+
+    const clearClient = useCallback(() => {
+        setState(prev => ({ ...prev, clientId: null, clientName: null, clientPhone: null }));
+    }, []);
+
+    const setDeliveryMode = useCallback((mode: DeliveryMode) => {
+        setState(prev => ({
+            ...prev,
+            deliveryMode: mode,
+            deliveryPhone:
+                mode === DeliveryMode.HOME_DELIVERY
+                    ? prev.deliveryPhone || prev.clientPhone || ''
+                    : prev.deliveryPhone,
+        }));
+    }, []);
+
+    const setDeliveryAddress = useCallback((address: string) => {
+        setState(prev => ({ ...prev, deliveryAddress: address }));
+    }, []);
+
+    const setDeliveryPhone = useCallback((phone: string) => {
+        setState(prev => ({ ...prev, deliveryPhone: phone }));
+    }, []);
+
+    const setLocalityId = useCallback((localityId: string | null) => {
+        setState(prev => ({ ...prev, localityId }));
     }, []);
 
     const addItem = useCallback((newItem: Omit<OrderItemDraft, 'quantity'>) => {
@@ -170,12 +259,28 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
 
     const updateService = useCallback((index: number, serviceId: string, serviceName: string, price: number) => {
         setState(prev => {
+            const item = prev.items[index];
+            if (!item || item.serviceId === serviceId) return prev;
+
             const newItems = [...prev.items];
-            if (newItems[index]) {
-                newItems[index] = { ...newItems[index], serviceId, serviceName, price };
+
+            // Merge into an existing line with the same article + service
+            const existingIndex = newItems.findIndex(
+                (i, idx) => idx !== index && i.articleId === item.articleId && i.serviceId === serviceId
+            );
+
+            if (existingIndex >= 0) {
+                newItems[existingIndex] = {
+                    ...newItems[existingIndex],
+                    quantity: newItems[existingIndex].quantity + item.quantity,
+                };
+                newItems.splice(index, 1);
+                return { ...prev, items: newItems };
             }
+
+            newItems[index] = { ...item, serviceId, serviceName, price };
             return { ...prev, items: newItems };
-        })
+        });
     }, []);
 
     const removeItem = useCallback((index: number) => {
@@ -190,14 +295,30 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
         setState({
             clientId: null,
             clientName: null,
+            clientPhone: null,
             items: [],
             isExpress: false,
+            deliveryMode: DeliveryMode.PICKUP,
+            deliveryAddress: '',
+            deliveryPhone: '',
+            localityId: null,
         });
+        setPendingStorageOrderId(null);
+        setPendingReceipt(null);
     }, []);
+
+    const dismissReceipt = useCallback(() => {
+        setPendingReceipt(null);
+    }, []);
+
+    const completeStorageStep = useCallback(() => {
+        setPendingStorageOrderId(null);
+        clearDraft();
+    }, [clearDraft]);
 
     const { toast } = useToast();
 
-    const validateOrder = useCallback(async () => {
+    const validateOrder = useCallback(async (paymentAmount?: number, paymentMethod?: PaymentMethod, paymentReference?: string) => {
         if (!state.clientId) {
             toast({
                 title: 'Validation Error',
@@ -215,11 +336,22 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
             return;
         }
 
+        if (state.deliveryMode === DeliveryMode.HOME_DELIVERY) {
+            if (!state.deliveryAddress.trim() || !state.deliveryPhone.trim() || !state.localityId) {
+                toast({
+                    title: 'Livraison incomplete',
+                    description: 'Adresse, telephone et localite sont requis pour une livraison a domicile.',
+                    variant: 'destructive',
+                });
+                return;
+            }
+        }
+
         try {
             // Retrieve site_id from session or use tenant_id if site_id is missing (simple tenant-scoped logic)
             // Casting session.user to any to access custom claims that might not be in generic definition yet
             const user = session?.user as any;
-            const siteId = user?.site_id || user?.tenant_id; // Fallback to tenant_id if site_id not explicit
+            const siteId = user?.site_ids?.[0] || user?.site_id;
 
             if (!siteId) {
                 toast({
@@ -230,10 +362,11 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
                 return;
             }
 
-            await OrdersService.create({
+            const createDto: any = {
                 site_id: siteId,
                 client_id: state.clientId,
                 service_level: state.isExpress ? ServiceLevel.EXPRESS : ServiceLevel.NORMAL,
+                delivery_mode: state.deliveryMode,
                 due_date: estimatedDueDate?.toISOString() || new Date().toISOString(),
                 total_price: totalPrice,
                 items: state.items.map(item => ({
@@ -241,9 +374,21 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
                     service_definition_id: item.serviceId,
                     quantity: item.quantity,
                     price: item.price
-                }))
-            }).then(async (response) => {
-                const orderData = response.data; // Wrapper API response data field
+                })),
+            };
+            if (state.deliveryMode === DeliveryMode.HOME_DELIVERY) {
+                createDto.delivery_address = state.deliveryAddress.trim();
+                createDto.delivery_phone = state.deliveryPhone.trim();
+                createDto.locality_id = state.localityId;
+            }
+            if (paymentAmount && paymentAmount > 0) {
+                createDto.initial_payment_amount = paymentAmount;
+                createDto.initial_payment_method = paymentMethod || PaymentMethod.CASH;
+                if (paymentReference) createDto.initial_payment_reference = paymentReference;
+            }
+
+            await OrdersService.create(createDto).then(async (response) => {
+                const orderData = (response as any)?.data ?? response;
 
                 toast({
                     title: 'Order Created',
@@ -251,20 +396,23 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
                     variant: 'success',
                 });
 
-                // Construct Print Payload
                 const printPayload: PrintableOrder = {
                     header: {
-                        tenantName: (user as any)?.tenant_name || 'CleanTrack',
-                        siteName: (user as any)?.site_name || 'Main Site',
-                        date: new Date().toISOString()
+                        tenantName: state.tenantConfig?.name || 'CleanTrack Pro',
+                        siteName: state.siteName || 'Agence',
+                        date: new Date().toISOString(),
+                        logoUrl: state.tenantConfig?.logoUrl ?? null,
+                        address: state.tenantConfig?.address ?? null,
+                        legalId: state.tenantConfig?.legal_id ?? null,
+                        vatNumber: state.tenantConfig?.vat_number ?? null,
                     },
                     client: {
                         name: state.clientName || 'Unknown Client',
-                        phone: '', // Placeholder, would need client details lookup
-                        qrCodeValue: orderData.id // Order UUID from backend
+                        phone: state.clientPhone || '',
+                        qrCodeValue: orderData.id,
+                        reference: orderData.reference || null,
                     },
                     items: state.items.map((item) => {
-                        // Robustly find the created item ID by matching article and service definition
                         const createdItem = orderData.items?.find((i: any) =>
                             i.article_type_id === item.articleId &&
                             i.service_definition_id === item.serviceId
@@ -279,62 +427,52 @@ export function OrderDraftProvider({ children }: { children: React.ReactNode }) 
                     }),
                     totals: {
                         totalPrice: totalPrice,
-                        currency: 'XOF', // Hardcoded to XOF (FCFA) for MVP - TODO: Move to Tenant config in future
-                        dueDate: estimatedDueDate?.toISOString() || ''
+                        currency: state.tenantConfig?.currency || DEFAULT_TENANT_CURRENCY,
+                        dueDate: estimatedDueDate?.toISOString() || '',
+                        amountPaid: paymentAmount || 0,
+                        balanceDue: totalPrice - (paymentAmount || 0),
                     }
                 };
 
-                const executePrint = async (payload: PrintableOrder) => {
-                    try {
-                        await PrintingService.printOrder(payload);
-                        toast({ title: 'Printing', description: 'Ticket sent to printer.', variant: 'success' });
-                    } catch (e) {
-                        toast({
-                            title: 'Printer Error',
-                            description: 'Check Local Proxy',
-                            variant: 'destructive',
-                            action: (
-                                <button
-                                    className="bg-white text-red-600 px-2 py-1 rounded font-bold text-sm hover:bg-gray-100"
-                                    onClick={() => executePrint(payload)}
-                                >
-                                    RETRY
-                                </button>
-                            )
-                        });
-                    }
-                };
-
-                // Trigger Print
-                executePrint(printPayload);
-
-                clearDraft();
+                setPendingReceipt(printPayload);
+                setPendingStorageOrderId(orderData.id);
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to validate order', error);
+            const message = getErrorMessage(error, 'Impossible de créer la commande.');
             toast({
-                title: 'Order Creation Failed',
-                description: `Failed to create order: ${error.message || 'Unknown error'}`,
+                title: 'Échec de l\'encaissement',
+                description: message,
                 variant: 'destructive',
             });
+            throw error;
         }
-    }, [state.clientId, state.items, state.isExpress, estimatedDueDate, totalPrice, session, clearDraft, toast]);
+    }, [state, estimatedDueDate, totalPrice, session, toast]);
 
     return (
         <OrderDraftContext.Provider
             value={{
                 ...state,
                 setClient,
+                clearClient,
                 addItem,
                 updateQuantity,
                 updateService,
                 removeItem,
                 clearDraft,
                 toggleExpress,
+                setDeliveryMode,
+                setDeliveryAddress,
+                setDeliveryPhone,
+                setLocalityId,
                 totalPrice,
                 estimatedDueDate,
-                validateOrder
+                validateOrder,
+                pendingReceipt,
+                dismissReceipt,
+                pendingStorageOrderId,
+                completeStorageStep,
             }}
         >
             {children}

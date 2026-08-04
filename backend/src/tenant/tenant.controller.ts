@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Delete } from '@nestjs/common';
 import { AuthGuard, RoleGuard, Roles, Public } from 'nest-keycloak-connect';
 import { CurrentUser, type AuthUser } from '../auth/decorators/current-user.decorator';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantBrandingDto } from './dto/update-tenant-branding.dto';
 import { UpdateTenantConfigDto } from './dto/update-tenant-config.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { Response } from '../shared/response/response.builder';
 import { HttpStatus, Patch } from '@nestjs/common';
 
@@ -18,7 +19,7 @@ export class TenantController {
      * Returns 403 if user doesn't have Superadmin role
      */
     @Post()
-    @Roles({ roles: ['Superadmin'] })
+    @Roles({ roles: ['realm:Superadmin', 'realm:Super_Admin'] })
     create(
         @Body() createTenantDto: CreateTenantDto,
         @CurrentUser() user: AuthUser,
@@ -27,7 +28,7 @@ export class TenantController {
     }
 
     @Patch('me')
-    @Roles({ roles: ['Admin_Tenant'] })
+    @Roles({ roles: ['realm:Admin_Tenant'] })
     async updateBranding(
         @Body() updateTenantBrandingDto: UpdateTenantBrandingDto,
         @CurrentUser() user: AuthUser,
@@ -43,7 +44,7 @@ export class TenantController {
     }
 
     @Patch('me/config')
-    @Roles({ roles: ['Admin_Tenant'] })
+    @Roles({ roles: ['realm:Admin_Tenant'] })
     async updateConfig(
         @Body() updateTenantConfigDto: UpdateTenantConfigDto,
         @CurrentUser() user: AuthUser,
@@ -60,7 +61,7 @@ export class TenantController {
     }
 
     @Get('me')
-    @Roles({ roles: ['Admin_Tenant', 'User_Site'] }) // Allow User_Site to fetch config
+    @Roles({ roles: ['realm:Admin_Tenant', 'realm:Admin_Site', 'realm:User_Site', 'realm:Livreur'] })
     async getMe(@CurrentUser() user: AuthUser) {
         if (!user.tenant_id) {
             throw new Error('Tenant ID missing for user');
@@ -77,23 +78,11 @@ export class TenantController {
      * Validates JWT token and extracts AuthUser context
      */
     @Get()
-    @Roles({ roles: ['Admin_Tenant', 'Superadmin'] })
+    @Roles({ roles: ['realm:Admin_Tenant', 'realm:Superadmin', 'realm:Super_Admin'] })
     findAll(@CurrentUser() user: AuthUser) {
         // Log user context to demonstrate AC3
         // console.log('User context:', { id: user.id, roles: user.roles, tenant_id: user.tenant_id });
         return this.tenantService.findAll();
-    }
-
-    /**
-     * AC4 Demonstration: User_Site attempting this route will get 403 Forbidden
-     */
-    @Get(':id')
-    @Roles({ roles: ['Admin_Tenant', 'Superadmin'] })
-    findOne(
-        @Param('id') id: string,
-        @CurrentUser() user: AuthUser,
-    ) {
-        return { id, message: 'Tenant details would be returned here', user: { email: user.email, roles: user.roles } };
     }
 
     /**
@@ -103,5 +92,41 @@ export class TenantController {
     @Public()
     health() {
         return { status: 'ok', message: 'Tenant service is running' };
+    }
+
+    /**
+     * AC4 Demonstration: User_Site attempting this route will get 403 Forbidden
+     */
+    @Get(':id')
+    @Roles({ roles: ['realm:Superadmin', 'realm:Super_Admin'] })
+    async findOne(@Param('id') id: string) {
+        const tenant = await this.tenantService.findOne(id);
+        return Response.builder()
+            .status(HttpStatus.OK)
+            .data(tenant)
+            .build();
+    }
+
+    @Patch(':id')
+    @Roles({ roles: ['realm:Superadmin', 'realm:Super_Admin'] })
+    async update(
+        @Param('id') id: string,
+        @Body() updateTenantDto: UpdateTenantDto,
+    ) {
+        const updatedTenant = await this.tenantService.update(id, updateTenantDto);
+        return Response.builder()
+            .status(HttpStatus.OK)
+            .data(updatedTenant)
+            .build();
+    }
+
+    @Delete(':id')
+    @Roles({ roles: ['realm:Superadmin', 'realm:Super_Admin'] })
+    async remove(@Param('id') id: string) {
+        await this.tenantService.remove(id);
+        return Response.builder()
+            .status(HttpStatus.OK)
+            .message('tenant.deleted')
+            .build();
     }
 }

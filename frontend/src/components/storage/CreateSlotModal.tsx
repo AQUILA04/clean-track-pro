@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal } from '../ui/modal';
-import { CreateStorageSlotDto, StorageSlotStatus } from '../../services/storage.service';
+import { CreateStorageSlotDto, StorageSlotStatus, SlotType } from '../../services/storage.service';
 
 interface CreateSlotModalProps {
     isOpen: boolean;
@@ -12,6 +12,7 @@ interface CreateSlotModalProps {
 export const CreateSlotModal: React.FC<CreateSlotModalProps> = ({ isOpen, onClose, onSubmit, siteId }) => {
     const [name, setName] = useState('');
     const [status, setStatus] = useState<StorageSlotStatus>(StorageSlotStatus.FREE);
+    const [slotType, setSlotType] = useState<SlotType>(SlotType.RECEPTION);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -21,80 +22,92 @@ export const CreateSlotModal: React.FC<CreateSlotModalProps> = ({ isOpen, onClos
         setIsSubmitting(true);
 
         try {
-            await onSubmit({ name, status, site_id: siteId });
+            await onSubmit({ name, status, slot_type: slotType, site_id: siteId });
             setName('');
             setStatus(StorageSlotStatus.FREE);
+            setSlotType(SlotType.RECEPTION);
             onClose();
         } catch (err: any) {
-            setError(err.message || 'Failed to create slot');
+            setError(err.message || 'Échec de la création du rayon');
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    if (!isOpen) return null;
+
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Create Storage Slot">
+        <Modal isOpen={isOpen} onClose={onClose} title="Ajouter un rayon">
             <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                    <div className="bg-red-50 p-4 rounded-md">
-                        <div className="flex">
-                            <div className="ml-3">
-                                <h3 className="text-sm font-medium text-red-800">{error}</h3>
-                            </div>
-                        </div>
+                    <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl">
+                        <p className="text-sm font-medium text-red-400">{error}</p>
                     </div>
                 )}
+
                 <div>
-                    <label htmlFor="name" className="block text-sm font-medium leading-6 text-gray-900">
-                        Slot Name (e.g., A-01)
+                    <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">
+                        Nom du rayon (ex. A-03, B-02)
                     </label>
-                    <div className="mt-2">
-                        <input
-                            type="text"
-                            name="name"
-                            id="name"
-                            required
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                            placeholder="A-01"
-                        />
-                    </div>
+                    <input
+                        type="text"
+                        name="name"
+                        id="name"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value.toUpperCase())}
+                        className="w-full px-4 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary"
+                        placeholder="A-03"
+                    />
                 </div>
 
                 <div>
-                    <label htmlFor="status" className="block text-sm font-medium leading-6 text-gray-900">
-                        Initial Status
+                    <label htmlFor="slot_type" className="block text-sm font-medium text-foreground mb-2">
+                        Type de rayon
                     </label>
-                    <div className="mt-2">
-                        <select
-                            id="status"
-                            name="status"
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value as StorageSlotStatus)}
-                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                        >
-                            {Object.values(StorageSlotStatus).map((s) => (
-                                <option key={s} value={s}>{s}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
-                <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2 disabled:opacity-50"
+                    <select
+                        id="slot_type"
+                        name="slot_type"
+                        value={slotType}
+                        onChange={(e) => setSlotType(e.target.value as SlotType)}
+                        className="w-full px-4 py-2.5 rounded-lg border border-border bg-card text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
                     >
-                        {isSubmitting ? 'Creating...' : 'Create'}
-                    </button>
+                        <option value={SlotType.RECEPTION}>Réception — entrée des commandes</option>
+                        <option value={SlotType.DELIVERY}>Livraison — prêt pour le client</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label htmlFor="status" className="block text-sm font-medium text-foreground mb-2">
+                        Statut initial
+                    </label>
+                    <select
+                        id="status"
+                        name="status"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value as StorageSlotStatus)}
+                        className="w-full px-4 py-2.5 rounded-lg border border-border bg-card text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
+                    >
+                        {Object.values(StorageSlotStatus).map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex gap-3 pt-2">
                     <button
                         type="button"
-                        className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
                         onClick={onClose}
+                        className="flex-1 px-4 py-2.5 rounded-lg border border-border text-foreground hover:bg-muted/50 transition-colors"
                     >
-                        Cancel
+                        Annuler
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={isSubmitting || !name.trim()}
+                        className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                    >
+                        {isSubmitting ? 'Création...' : 'Créer le rayon'}
                     </button>
                 </div>
             </form>

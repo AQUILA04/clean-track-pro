@@ -5,31 +5,41 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { clientSchema, ClientFormValues } from '@/lib/validations/client';
-import { ClientService } from '@/services/client.service';
-// Assuming basic UI components or using standard HTML if UI lib missing
-// Requirements say "Use standard TailWind components defined in previous stories"
-// I will use standard HTML with Tailwind classes for now to avoid missing component errors,
-// unless I see 'ui' folder in components.
+import { ClientService, ClientRecord } from '@/services/client.service';
 
-export function ClientRegistrationForm() {
+type ClientRegistrationFormProps = {
+    mode?: 'create' | 'edit';
+    clientId?: string;
+    defaultValues?: Partial<ClientFormValues>;
+    onSuccess?: (client: ClientRecord) => void;
+    submitLabel?: string;
+    compact?: boolean;
+};
+
+export function ClientRegistrationForm({
+    mode = 'create',
+    clientId,
+    defaultValues,
+    onSuccess,
+    submitLabel,
+    compact = false,
+}: ClientRegistrationFormProps) {
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<boolean>(false);
-    const [loading, setLoading] = useState<boolean>(false);
+    const [loading, setLoading] = useState(false);
 
     const {
         register,
         handleSubmit,
         formState: { errors },
-        reset,
     } = useForm<ClientFormValues>({
         resolver: zodResolver(clientSchema),
         defaultValues: {
-            first_name: '',
-            last_name: '',
-            phone: '',
-            email: '',
-            notes: '',
+            first_name: defaultValues?.first_name || '',
+            last_name: defaultValues?.last_name || '',
+            phone: defaultValues?.phone || '',
+            email: defaultValues?.email || '',
+            notes: defaultValues?.notes || '',
         },
     });
 
@@ -37,110 +47,123 @@ export function ClientRegistrationForm() {
         setLoading(true);
         setError(null);
         try {
-            await ClientService.create(data);
-            setSuccess(true);
-            reset();
-            // Optional: Redirect or show success details
-            // router.push('/dashboard/clients'); 
-        } catch (err: any) {
-            setError(err.message || 'Something went wrong');
+            const payload = {
+                ...data,
+                email: data.email || undefined,
+            };
+            const client =
+                mode === 'edit' && clientId
+                    ? await ClientService.update(clientId, payload)
+                    : await ClientService.create(payload);
+
+            if (onSuccess) {
+                onSuccess(client);
+            } else if (mode === 'edit' && clientId) {
+                router.push(`/clients/${clientId}`);
+            } else {
+                router.push(`/clients/${client.id}`);
+            }
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Something went wrong');
         } finally {
             setLoading(false);
         }
     };
 
-    if (success) {
-        return (
-            <div className="p-6 bg-green-50 text-green-700 border border-green-200 rounded-lg">
-                <h3 className="text-lg font-medium">Client Created Successfully!</h3>
-                <p className="mt-2">The client has been registered with a unique code.</p>
-                <button
-                    onClick={() => setSuccess(false)}
-                    className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
-                >
-                    Create Another Client
-                </button>
-            </div>
-        );
-    }
+    const inputClassName =
+        'w-full px-3 py-2 rounded-md border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary';
+
+    const defaultSubmit =
+        mode === 'edit' ? 'Enregistrer' : loading ? 'Création...' : 'Créer le client';
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-lg bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-            <div className="space-y-2">
-                <h2 className="text-xl font-semibold text-gray-900">Register New Client</h2>
-                <p className="text-sm text-gray-500">Enter client details to generate a unique code.</p>
-            </div>
+        <form
+            onSubmit={handleSubmit(onSubmit)}
+            className={`space-y-6 ${compact ? '' : 'max-w-lg bg-card p-6 rounded-xl border border-border'}`}
+        >
+            {!compact && (
+                <div className="space-y-2">
+                    <h2 className="text-xl font-semibold text-foreground">
+                        {mode === 'edit' ? 'Modifier le client' : 'Nouveau client'}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        {mode === 'edit'
+                            ? 'Mettez à jour les informations du client.'
+                            : 'Renseignez les informations pour générer un code unique.'}
+                    </p>
+                </div>
+            )}
 
             {error && (
-                <div className="p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
+                <div className="p-3 bg-red-500/10 text-red-400 text-sm rounded border border-red-500/30">
                     {error}
                 </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                    <label htmlFor="first_name" className="block text-sm font-medium text-gray-700">First Name *</label>
-                    <input
-                        {...register('first_name')}
-                        id="first_name"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="John"
-                    />
-                    {errors.first_name && <p className="text-red-500 text-xs">{errors.first_name.message}</p>}
+                    <label htmlFor="first_name" className="block text-sm font-medium text-foreground">
+                        Prénom *
+                    </label>
+                    <input {...register('first_name')} id="first_name" className={inputClassName} placeholder="Jean" />
+                    {errors.first_name && <p className="text-red-400 text-xs">{errors.first_name.message}</p>}
                 </div>
 
                 <div className="space-y-1">
-                    <label htmlFor="last_name" className="block text-sm font-medium text-gray-700">Last Name *</label>
-                    <input
-                        {...register('last_name')}
-                        id="last_name"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Doe"
-                    />
-                    {errors.last_name && <p className="text-red-500 text-xs">{errors.last_name.message}</p>}
+                    <label htmlFor="last_name" className="block text-sm font-medium text-foreground">
+                        Nom *
+                    </label>
+                    <input {...register('last_name')} id="last_name" className={inputClassName} placeholder="Dupont" />
+                    {errors.last_name && <p className="text-red-400 text-xs">{errors.last_name.message}</p>}
                 </div>
             </div>
 
             <div className="space-y-1">
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number * (E.164)</label>
+                <label htmlFor="phone" className="block text-sm font-medium text-foreground">
+                    Téléphone * (E.164)
+                </label>
                 <input
                     {...register('phone')}
                     id="phone"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={inputClassName}
                     placeholder="+33612345678"
                 />
-                {errors.phone && <p className="text-red-500 text-xs">{errors.phone.message}</p>}
+                {errors.phone && <p className="text-red-400 text-xs">{errors.phone.message}</p>}
             </div>
 
             <div className="space-y-1">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email (Optional)</label>
+                <label htmlFor="email" className="block text-sm font-medium text-foreground">
+                    Email (optionnel)
+                </label>
                 <input
                     {...register('email')}
                     id="email"
                     type="email"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="john@example.com"
+                    className={inputClassName}
+                    placeholder="jean@example.com"
                 />
-                {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
+                {errors.email && <p className="text-red-400 text-xs">{errors.email.message}</p>}
             </div>
 
             <div className="space-y-1">
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Notes (Optional)</label>
+                <label htmlFor="notes" className="block text-sm font-medium text-foreground">
+                    Notes (optionnel)
+                </label>
                 <textarea
                     {...register('notes')}
                     id="notes"
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Additional details..."
+                    className={inputClassName}
+                    placeholder="Informations complémentaires..."
                 />
             </div>
 
             <button
                 type="submit"
                 disabled={loading}
-                className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full px-4 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-                {loading ? 'Creating...' : 'Create Client'}
+                {loading ? 'Enregistrement...' : submitLabel || defaultSubmit}
             </button>
         </form>
     );

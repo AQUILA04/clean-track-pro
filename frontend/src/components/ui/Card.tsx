@@ -20,7 +20,7 @@ export const Card: React.FC<CardProps> = ({
 
     return (
         <div
-            className={`bg-white border border-gray-200 rounded-xl shadow-md ${paddings[padding]} ${className}`}
+            className={`bg-card border border-border rounded-xl ${paddings[padding]} ${className}`}
             {...props}
         >
             {children}
@@ -51,8 +51,8 @@ export const KPICard: React.FC<KPICardProps> = ({
         <Card className={`flex flex-col justify-between ${className}`}>
             <div className="flex items-start justify-between">
                 <div>
-                    <p className="text-sm font-medium text-gray-700">{title}</p>
-                    <h3 className="text-3xl font-bold text-gray-900 mt-2">{value}</h3>
+                    <p className="text-sm font-medium text-muted-foreground">{title}</p>
+                    <h3 className="text-3xl font-bold text-foreground mt-2">{value}</h3>
                 </div>
                 <div className="p-3 bg-secondary rounded-full">
                     <Icon className="h-6 w-6 text-primary" />
@@ -72,7 +72,7 @@ export const KPICard: React.FC<KPICardProps> = ({
                         )}
                         {Math.abs(trend.value)}%
                     </span>
-                    <span className="text-gray-500 ml-2">{trend.label}</span>
+                    <span className="text-muted-foreground ml-2">{trend.label}</span>
                 </div>
             )}
         </Card>

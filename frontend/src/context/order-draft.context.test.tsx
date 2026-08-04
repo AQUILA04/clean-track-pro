@@ -25,6 +25,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('OrderDraftContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
   });
 
   it('initializes with default values', () => {
@@ -33,7 +34,30 @@ describe('OrderDraftContext', () => {
     expect(result.current.isExpress).toBe(false);
   });
 
-  it('validateOrder should create order and trigger printing', async () => {
+  it('clearClient removes client without clearing items', () => {
+    const { result } = renderHook(() => useOrderDraft(), { wrapper });
+
+    act(() => {
+      result.current.setClient('client-123', 'John Doe');
+      result.current.addItem({
+        articleId: 'article-1',
+        articleName: 'Shirt',
+        serviceId: 'service-1',
+        serviceName: 'Wash',
+        price: 10,
+      });
+    });
+
+    act(() => {
+      result.current.clearClient();
+    });
+
+    expect(result.current.clientId).toBeNull();
+    expect(result.current.clientName).toBeNull();
+    expect(result.current.items).toHaveLength(1);
+  });
+
+  it('validateOrder should create order and expose receipt preview', async () => {
     const { result } = renderHook(() => useOrderDraft(), { wrapper });
 
     // Add client and item
@@ -58,8 +82,6 @@ describe('OrderDraftContext', () => {
       }
     });
 
-    (PrintingService.printOrder as jest.Mock).mockResolvedValue(undefined);
-
     // Execute Validate
     await act(async () => {
       await result.current.validateOrder();
@@ -73,14 +95,17 @@ describe('OrderDraftContext', () => {
       ])
     }));
 
-    // Verify PrintingService validation (using waitFor as printing is inside .then)
+    // Verify receipt preview payload (printing is user-triggered from modal)
     await waitFor(() => {
-      expect(PrintingService.printOrder).toHaveBeenCalledWith(expect.objectContaining({
+      expect(result.current.pendingReceipt).toEqual(expect.objectContaining({
         client: expect.objectContaining({ qrCodeValue: 'order-uuid' }),
         items: expect.arrayContaining([
           expect.objectContaining({ qrCodeValue: 'item-uuid-1' })
         ])
       }));
+      expect(result.current.pendingStorageOrderId).toBe('order-uuid');
     });
+
+    expect(PrintingService.printOrder).not.toHaveBeenCalled();
   });
 });

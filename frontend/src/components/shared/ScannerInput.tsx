@@ -4,7 +4,7 @@ import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react
 
 interface ScannerInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;
-    onScan?: () => void; // Triggered on Enter if value exists
+    onScan?: (value: string) => void; // Triggered on Enter with the scanned value
     autoFocus?: boolean;
     containerClassName?: string;
     labelClassName?: string;
@@ -48,8 +48,9 @@ export const ScannerInput = forwardRef<ScannerInputHandle, ScannerInputProps>(({
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault(); // Prevent form submission if inside form
-            if (onScan && props.value) {
-                onScan();
+            const value = e.currentTarget.value.trim();
+            if (onScan && value) {
+                onScan(value);
             }
         }
         if (onKeyDown) {
@@ -60,7 +61,7 @@ export const ScannerInput = forwardRef<ScannerInputHandle, ScannerInputProps>(({
     return (
         <div className={containerClassName}>
             {label && (
-                <label className={`block text-sm font-medium text-gray-700 mb-2 ${labelClassName}`}>
+                <label className={`block text-sm font-medium text-muted-foreground mb-2 ${labelClassName}`}>
                     {label}
                 </label>
             )}
@@ -68,7 +69,7 @@ export const ScannerInput = forwardRef<ScannerInputHandle, ScannerInputProps>(({
                 ref={internalRef}
                 type="text"
                 onKeyDown={handleKeyDown}
-                className={`w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg shadow-sm ${inputClassName}`}
+                className={`w-full px-4 py-3 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary text-lg transition-all duration-150 ${inputClassName}`}
                 {...props}
             />
         </div>

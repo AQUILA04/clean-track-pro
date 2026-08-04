@@ -27,8 +27,8 @@ export const ArticleTable: React.FC<ArticleTableProps> = ({ articles, onEdit, on
                 {
                     header: 'ICÔNE',
                     accessor: (article) => (
-                        <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center">
-                            {IconMap[article.icon as string] || <Shirt className="h-5 w-5 text-gray-500" />}
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            {IconMap[article.icon as string] || <Shirt className="h-5 w-5 text-muted-foreground" />}
                         </div>
                     ),
                     className: "w-16"
@@ -37,15 +37,15 @@ export const ArticleTable: React.FC<ArticleTableProps> = ({ articles, onEdit, on
                     header: 'NOM DE L\'ARTICLE',
                     accessor: (article) => (
                         <div>
-                            <div className="font-semibold text-gray-900">{article.name}</div>
-                            <div className="text-xs text-gray-400">ID: {article.articleId || article.id}</div>
+                            <div className="font-semibold text-foreground">{article.name}</div>
+                            <div className="text-xs text-muted-foreground">ID: {article.articleId || article.id}</div>
                         </div>
                     ),
                 },
                 {
                     header: 'CATÉGORIE',
                     accessor: (article) => (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-gray-100 text-gray-600 uppercase tracking-wide">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-muted text-muted-foreground uppercase tracking-wide">
                             {article.category}
                         </span>
                     ),
@@ -58,7 +58,7 @@ export const ArticleTable: React.FC<ArticleTableProps> = ({ articles, onEdit, on
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => onEdit(article)}
-                                className="text-gray-400 hover:text-gray-600 p-2 h-9 w-9"
+                                className="text-muted-foreground hover:text-foreground p-2 h-9 w-9"
                             >
                                 <Pencil className="h-5 w-5" />
                             </Button>
@@ -66,7 +66,7 @@ export const ArticleTable: React.FC<ArticleTableProps> = ({ articles, onEdit, on
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => onDelete(article)}
-                                className="text-gray-400 hover:text-red-600 p-2 h-9 w-9"
+                                className="text-muted-foreground hover:text-red-500 p-2 h-9 w-9"
                             >
                                 <Trash2 className="h-5 w-5" />
                             </Button>

@@ -2,32 +2,28 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useDebounce } from 'use-debounce';
-import { useRouter } from 'next/navigation';
-import { ClientService } from '../../services/client.service';
-
-interface Client {
-    id: string;
-    first_name: string;
-    last_name: string;
-    phone: string;
-    unique_code: string;
-}
+import { ClientService, ClientRecord } from '../../services/client.service';
 
 interface ClientOmniboxProps {
-    onSelect?: (client: Client) => void;
+    onSelect?: (client: ClientRecord) => void;
+    onCreateNew?: (prefill: { phone?: string; name?: string }) => void;
     placeholder?: string;
     className?: string;
 }
 
-export function ClientOmnibox({ onSelect, placeholder = 'Search client (Name, Phone, Code)...', className = '' }: ClientOmniboxProps) {
+export function ClientOmnibox({
+    onSelect,
+    onCreateNew,
+    placeholder = 'Search client (Name, Phone, Code)...',
+    className = '',
+}: ClientOmniboxProps) {
     const [query, setQuery] = useState('');
     const [debouncedQuery] = useDebounce(query, 300);
-    const [results, setResults] = useState<Client[]>([]);
+    const [results, setResults] = useState<ClientRecord[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
-    const router = useRouter();
 
     useEffect(() => {
         if (debouncedQuery.length < 3) {
@@ -46,7 +42,7 @@ export function ClientOmnibox({ onSelect, placeholder = 'Search client (Name, Ph
             } catch (error) {
                 console.error('Search failed:', error);
                 setResults([]);
-                setIsOpen(true); // Keep open to show "No results" or error
+                setIsOpen(true);
             } finally {
                 setIsLoading(false);
             }
@@ -55,24 +51,28 @@ export function ClientOmnibox({ onSelect, placeholder = 'Search client (Name, Ph
         fetchClients();
     }, [debouncedQuery]);
 
-    const handleSelect = (client: Client) => {
+    const handleSelect = (client: ClientRecord) => {
         if (onSelect) {
             onSelect(client);
         }
-        setQuery(`${client.first_name} ${client.last_name}`);
+        setQuery('');
+        setResults([]);
         setIsOpen(false);
     };
 
     const handleCreate = () => {
-        // Pass the query to pre-fill the form
-        // Assuming the query might be a phone number or name
-        const params = new URLSearchParams();
-        if (/^\d+$/.test(query)) {
-            params.set('phone', query);
-        } else {
-            params.set('name', query);
+        const prefill = /^\d+$/.test(query) || query.startsWith('+')
+            ? { phone: query }
+            : { name: query };
+        if (onCreateNew) {
+            onCreateNew(prefill);
+            setIsOpen(false);
+            return;
         }
-        router.push(`/dashboard/clients/new?${params.toString()}`);
+        const params = new URLSearchParams();
+        if (prefill.phone) params.set('phone', prefill.phone);
+        if (prefill.name) params.set('name', prefill.name);
+        window.location.href = `/clients/new?${params.toString()}`;
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -113,34 +113,32 @@ export function ClientOmnibox({ onSelect, placeholder = 'Search client (Name, Ph
                         if (query.length >= 3) setIsOpen(true);
                     }}
                     placeholder={placeholder}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-150"
                 />
                 {isLoading && (
-                    <div className="absolute right-3 top-2.5">
-                        {/* Simple Spinner */}
-                        <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                    <div className="absolute right-3 top-3">
+                        <div className="animate-spin h-5 w-5 border-2 border-primary rounded-full border-t-transparent"></div>
                     </div>
                 )}
             </div>
 
-            {isOpen && (debouncedQuery.length >= 3) && (
-                <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+            {isOpen && debouncedQuery.length >= 3 && (
+                <ul className="absolute z-10 w-full mt-1 bg-card border border-border rounded-xl shadow-lg max-h-60 overflow-auto">
                     {results.map((client, index) => (
                         <li
                             key={client.id}
                             onClick={() => handleSelect(client)}
-                            className={`px-4 py-2 cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 flex justify-between items-center ${index === selectedIndex ? 'bg-blue-50' : ''
-                                }`}
+                            className={`px-4 py-2 cursor-pointer border-b border-border/50 last:border-0 hover:bg-muted/50 flex justify-between items-center transition-colors duration-100 ${
+                                index === selectedIndex ? 'bg-primary/10' : ''
+                            }`}
                         >
                             <div>
-                                <div className="font-medium text-gray-900">
+                                <div className="font-medium text-foreground">
                                     {client.first_name} {client.last_name}
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                    {client.phone}
-                                </div>
+                                <div className="text-sm text-muted-foreground">{client.phone}</div>
                             </div>
-                            <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                            <span className="text-xs font-mono bg-muted text-muted-foreground px-2 py-1 rounded">
                                 {client.unique_code}
                             </span>
                         </li>
@@ -149,10 +147,10 @@ export function ClientOmnibox({ onSelect, placeholder = 'Search client (Name, Ph
                     {results.length === 0 && !isLoading && (
                         <li
                             onClick={handleCreate}
-                            className="px-4 py-3 text-center cursor-pointer hover:bg-gray-50 text-blue-600"
+                            className="px-4 py-3 text-center cursor-pointer hover:bg-muted/50 text-primary transition-colors duration-150"
                         >
-                            <p className="text-gray-500 mb-1">No client found.</p>
-                            <span className="font-medium">Create new client "{query}"</span>
+                            <p className="text-muted-foreground mb-1">Aucun client trouvé.</p>
+                            <span className="font-medium">Créer le client « {query} »</span>
                         </li>
                     )}
                 </ul>

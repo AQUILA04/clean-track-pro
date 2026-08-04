@@ -1,7 +1,9 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, IsDateString, ValidateNested, ArrayMinSize, Min } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, IsDateString, ValidateNested, ArrayMinSize, Min, MaxLength, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ServiceLevel } from '../entities/order.entity';
 import { OrderStatus } from '../enums/order-status.enum';
+import { DeliveryMode } from '../enums/delivery-mode.enum';
+import { PaymentMethod } from '../../payments/enums/payment-method.enum';
 
 export class CreateOrderItemDto {
     @IsNotEmpty()
@@ -17,7 +19,6 @@ export class CreateOrderItemDto {
     @Min(1)
     quantity: number;
 
-    // Price is optional here as backend calculates it, but can be passed for verification
     @IsOptional()
     @IsNumber()
     price?: number;
@@ -40,9 +41,30 @@ export class CreateOrderDto {
     @IsEnum(ServiceLevel)
     service_level?: ServiceLevel;
 
+    @IsOptional()
+    @IsEnum(DeliveryMode)
+    delivery_mode?: DeliveryMode;
+
+    @ValidateIf((o: CreateOrderDto) => o.delivery_mode === DeliveryMode.HOME_DELIVERY)
+    @IsNotEmpty()
+    @IsString()
+    @MaxLength(500)
+    delivery_address?: string;
+
+    @ValidateIf((o: CreateOrderDto) => o.delivery_mode === DeliveryMode.HOME_DELIVERY)
+    @IsNotEmpty()
+    @IsString()
+    @MaxLength(32)
+    delivery_phone?: string;
+
+    @ValidateIf((o: CreateOrderDto) => o.delivery_mode === DeliveryMode.HOME_DELIVERY)
+    @IsNotEmpty()
+    @IsUUID()
+    locality_id?: string;
+
     @IsNotEmpty()
     @IsDateString()
-    due_date: string; // ISO Date string
+    due_date: string;
 
     @IsNotEmpty()
     @IsNumber()
@@ -53,4 +75,17 @@ export class CreateOrderDto {
     @ValidateNested({ each: true })
     @Type(() => CreateOrderItemDto)
     items: CreateOrderItemDto[];
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    initial_payment_amount?: number;
+
+    @IsOptional()
+    @IsEnum(PaymentMethod)
+    initial_payment_method?: PaymentMethod;
+
+    @IsOptional()
+    @IsString()
+    initial_payment_reference?: string;
 }

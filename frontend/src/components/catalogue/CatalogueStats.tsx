@@ -9,13 +9,13 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ label, value, icon, colorClass }) => (
-    <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex items-center space-x-4">
+    <div className="bg-card rounded-xl p-6 border border-border shadow-sm flex items-center space-x-4">
         <div className={`h-12 w-12 rounded-full flex items-center justify-center ${colorClass}`}>
             {icon}
         </div>
         <div>
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</div>
-            <div className="text-2xl font-bold text-gray-900">{value}</div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</div>
+            <div className="text-2xl font-bold text-foreground">{value}</div>
         </div>
     </div>
 );
@@ -34,20 +34,20 @@ export const CatalogueStats: React.FC<CatalogueStatsProps> = ({ stats }) => {
             <StatCard
                 label="Total Articles"
                 value={stats.totalArticles}
-                icon={<Shirt className="h-6 w-6 text-blue-600" />}
-                colorClass="bg-blue-50"
+                icon={<Shirt className="h-6 w-6 text-blue-600 dark:text-blue-400" />}
+                colorClass="bg-blue-500/10"
             />
             <StatCard
                 label="Catégories"
                 value={stats.categories}
-                icon={<Shapes className="h-6 w-6 text-green-600" />}
-                colorClass="bg-green-50"
+                icon={<Shapes className="h-6 w-6 text-green-600 dark:text-green-400" />}
+                colorClass="bg-green-500/10"
             />
             <StatCard
                 label="Services Actifs"
                 value={stats.activeServices}
-                icon={<Zap className="h-6 w-6 text-purple-600" />}
-                colorClass="bg-purple-50"
+                icon={<Zap className="h-6 w-6 text-purple-600 dark:text-purple-400" />}
+                colorClass="bg-purple-500/10"
             />
         </div>
     );

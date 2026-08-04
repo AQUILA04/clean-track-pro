@@ -1,4 +1,5 @@
 import { getSession } from 'next-auth/react';
+import { parseFetchError } from '@/lib/api-error';
 
 export enum StorageSlotStatus {
     FREE = 'FREE',
@@ -6,10 +7,16 @@ export enum StorageSlotStatus {
     RESERVED = 'RESERVED',
 }
 
+export enum SlotType {
+    RECEPTION = 'RECEPTION',
+    DELIVERY = 'DELIVERY',
+}
+
 export interface StorageSlot {
     id: string;
     name: string;
     status: StorageSlotStatus;
+    slot_type: SlotType;
     site_id: string;
     tenant_id: string;
     created_at: string;
@@ -20,6 +27,34 @@ export interface CreateStorageSlotDto {
     name: string;
     site_id: string;
     status?: StorageSlotStatus;
+    slot_type?: SlotType;
+}
+
+export interface SlotContentsItem {
+    id: string;
+    quantity: number;
+    price: number;
+    article_label: string | null;
+    service_label: string | null;
+}
+
+export interface SlotContentsOrder {
+    id: string;
+    reference: string | null;
+    status: string;
+    client_name: string;
+    client_phone: string | null;
+    items: SlotContentsItem[];
+}
+
+export interface SlotContentsResponse {
+    slot: {
+        id: string;
+        name: string;
+        status: StorageSlotStatus;
+        slot_type: SlotType;
+    };
+    order: SlotContentsOrder | null;
 }
 
 const getAuthHeaders = async () => {
@@ -41,13 +76,41 @@ const getJsonAuthHeaders = async () => {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export const StorageService = {
-    getAll: async (siteId: string): Promise<StorageSlot[]> => {
+    getAll: async (siteId: string, slotType?: SlotType): Promise<StorageSlot[]> => {
         const headers = await getJsonAuthHeaders();
-        const response = await fetch(`${API_URL}/storage/slots?site_id=${siteId}`, {
+        const params = new URLSearchParams({ site_id: siteId });
+        if (slotType) params.set('slot_type', slotType);
+        const response = await fetch(`${API_URL}/storage/slots?${params}`, {
             method: 'GET',
             headers: headers,
         });
         if (!response.ok) throw new Error('Failed to fetch slots');
+        const res = await response.json();
+        return res.data || res;
+    },
+
+    getOccupancyBySite: async (): Promise<
+        Array<{ siteId: string; total: number; occupied: number; rate: number }>
+    > => {
+        const headers = await getJsonAuthHeaders();
+        const response = await fetch(`${API_URL}/storage/stats/occupancy`, {
+            method: 'GET',
+            headers,
+        });
+        if (!response.ok) throw new Error('Failed to fetch occupancy stats');
+        const res = await response.json();
+        return res.data || res;
+    },
+
+    getSlotContents: async (slotId: string): Promise<SlotContentsResponse> => {
+        const headers = await getJsonAuthHeaders();
+        const response = await fetch(`${API_URL}/storage/slots/${slotId}/contents`, {
+            method: 'GET',
+            headers,
+        });
+        if (!response.ok) {
+            throw new Error(await parseFetchError(response, 'Impossible de charger le contenu du rayon'));
+        }
         const res = await response.json();
         return res.data || res;
     },
@@ -75,8 +138,19 @@ export const StorageService = {
             body: JSON.stringify({ order_id: orderId, shelf_slot_id: slotId }),
         });
         if (!response.ok) {
+            throw new Error(await parseFetchError(response, 'Impossible de ranger la commande dans ce rayon'));
+        }
+    },
+
+    releaseOrder: async (orderId: string): Promise<void> => {
+        const headers = await getJsonAuthHeaders();
+        const response = await fetch(`${API_URL}/storage/release/${orderId}`, {
+            method: 'POST',
+            headers: headers,
+        });
+        if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.message || 'Failed to assign order');
+            throw new Error(error.message || 'Failed to release order from slot');
         }
     },
 
@@ -89,6 +163,28 @@ export const StorageService = {
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.message || 'Failed to lookup order');
+        }
+        const res = await response.json();
+        return res.data || res;
+    },
+
+    /**
+     * Elastic storage lookup — returns { count, matches } for UUID/ref fragments.
+     */
+    lookupOrders: async (
+        q: string,
+        options?: { siteId?: string; statuses?: string[] },
+    ): Promise<{ count: number; matches: any[] }> => {
+        const headers = await getJsonAuthHeaders();
+        const params = new URLSearchParams({ q });
+        if (options?.siteId) params.set('siteId', options.siteId);
+        if (options?.statuses?.length) params.set('statuses', options.statuses.join(','));
+        const response = await fetch(`${API_URL}/storage/lookup?${params}`, {
+            method: 'GET',
+            headers,
+        });
+        if (!response.ok) {
+            throw new Error(await parseFetchError(response, 'Commande introuvable'));
         }
         const res = await response.json();
         return res.data || res;
@@ -118,10 +214,15 @@ export const StorageService = {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to upload file');
+            throw new Error(await parseFetchError(response, 'Échec du téléversement du fichier'));
         }
 
         const res = await response.json();
-        return res.url; // Assuming backend returns { url: "..." }
+        // Backend wraps payload: { statusCode, message, data: { url } }
+        const url = res?.data?.url ?? res?.url;
+        if (!url || typeof url !== 'string') {
+            throw new Error('URL du fichier manquante dans la réponse serveur');
+        }
+        return url;
     }
 };

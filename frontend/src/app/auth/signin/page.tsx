@@ -1,57 +1,74 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { TENANT_DEACTIVATED_MESSAGE } from '@/lib/tenant-access';
 
-function SignInContent() {
+function SignInRedirect() {
     const searchParams = useSearchParams();
-    const callbackUrl = searchParams.get('callbackUrl') || '/';
+    const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
     const error = searchParams.get('error');
+    const [flash, setFlash] = useState<string | null>(null);
 
-    const handleSignIn = () => {
-        signIn('keycloak', { callbackUrl });
-    };
+    useEffect(() => {
+        const stored = sessionStorage.getItem('auth_flash');
+        if (stored) {
+            sessionStorage.removeItem('auth_flash');
+            setFlash(stored);
+            return;
+        }
+        if (error === 'TenantDeactivated') {
+            setFlash(TENANT_DEACTIVATED_MESSAGE);
+        }
+    }, [error]);
 
-    return (
-        <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
-            <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-900">CleanTrack Pro</h1>
-                <p className="mt-2 text-sm text-gray-600">
-                    Sign in to access your account
+    useEffect(() => {
+        if (error === 'TenantDeactivated' || flash) {
+            return;
+        }
+        void signIn('keycloak', { callbackUrl });
+    }, [callbackUrl, error, flash]);
+
+    if (error === 'TenantDeactivated' || flash) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-4">
+                <p className="max-w-md text-center text-sm text-red-600">
+                    {flash || TENANT_DEACTIVATED_MESSAGE}
                 </p>
-            </div>
-
-            {error && (
-                <div className="rounded-md bg-red-50 p-4">
-                    <p className="text-sm text-red-800">
-                        Authentication failed. Please try again.
-                    </p>
-                </div>
-            )}
-
-            <div className="mt-8">
                 <button
-                    onClick={handleSignIn}
-                    className="w-full rounded-md bg-blue-600 px-4 py-3 text-white font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    type="button"
+                    className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white"
+                    onClick={() => {
+                        setFlash(null);
+                        void signIn('keycloak', { callbackUrl: '/dashboard' });
+                    }}
                 >
-                    Sign in with Keycloak
+                    Réessayer
                 </button>
             </div>
+        );
+    }
 
-            <p className="mt-4 text-center text-xs text-gray-500">
-                Secure authentication powered by Keycloak
-            </p>
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-gray-50">
+            <p className="text-sm text-gray-500">Redirection vers la connexion…</p>
         </div>
     );
 }
 
+/** Auto-redirects to Keycloak (POST) — used for server-side auth guards. */
 export default function SignInPage() {
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-50">
-            <Suspense fallback={<div className="text-center">Loading...</div>}>
-                <SignInContent />
-            </Suspense>
-        </div>
+        <Suspense
+            fallback={
+                <div className="flex min-h-screen items-center justify-center bg-gray-50">
+                    <p className="text-sm text-gray-500">Chargement…</p>
+                </div>
+            }
+        >
+            <SignInRedirect />
+        </Suspense>
     );
 }

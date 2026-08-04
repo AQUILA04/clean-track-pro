@@ -1,4 +1,3 @@
-
 import { Module, Global } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ClsModule } from 'nestjs-cls';
@@ -18,7 +17,7 @@ import { TenancyGuard } from '../../guards/tenancy.guard';
         {
             provide: APP_GUARD,
             useClass: TenancyGuard,
-        }
+        },
     ],
     exports: [RlsService],
 })

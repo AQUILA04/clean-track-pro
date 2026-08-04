@@ -71,30 +71,29 @@ export default function AgenciesPage() {
     });
 
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50/50">
+        <div className="flex flex-col min-h-screen">
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                <h1 className="text-2xl font-bold text-gray-900">Agencies Management</h1>
+                <h1 className="text-2xl font-bold text-foreground">Agencies Management</h1>
 
-                {/* Search & Actions */}
                 <div className="flex items-center gap-4 flex-1 justify-end">
                     <div className="relative w-full max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
                             placeholder="Rechercher une agence ou une ville..."
-                            className="pl-10 bg-gray-100 border-none rounded-full h-10 w-full focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-white transition-colors"
+                            className="pl-10 bg-card border-border rounded-xl h-10 w-full focus-visible:ring-1 focus-visible:ring-primary transition-colors"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
 
-                    <button className="text-gray-500 hover:text-gray-700 relative p-2">
+                    <button className="text-muted-foreground hover:text-foreground relative p-2 transition-colors duration-150">
                         <Bell size={20} />
-                        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-background" />
                     </button>
 
                     <Button
-                        className="rounded-full px-6 bg-primary hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30"
+                        className="rounded-lg px-6"
                         onClick={() => setIsAddModalOpen(true)}
                     >
                         <Plus className="mr-2 h-4 w-4" />
@@ -103,20 +102,17 @@ export default function AgenciesPage() {
                 </div>
             </div>
 
-            {/* Page Content */}
             <div>
                 <div className="mb-2">
-                    <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Agencies Network Overview</h2>
+                    <h2 className="text-3xl font-extrabold text-foreground mb-2">Agencies Network Overview</h2>
                     <div className="flex items-center justify-between">
-                        <p className="text-gray-500 max-w-2xl">
+                        <p className="text-muted-foreground max-w-2xl">
                             Manage and monitor performance metrics across all active laundry locations in your network.
                         </p>
-                        <p className="text-sm text-gray-400 flex items-center gap-1">
-                            <span className="inline-block w-4 h-4 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin mr-1 opacity-0" /> {/* Placeholder for sync icon */}
-                            Mis à jour à l'instant
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            Mis à jour à l&apos;instant
                         </p>
                     </div>
-
                 </div>
 
                 <div className="h-8" /> {/* Spacer */}
@@ -130,7 +126,7 @@ export default function AgenciesPage() {
 
                 {/* Grid */}
                 {loading ? (
-                    <div className="p-8 text-center text-gray-500">Chargement des agences...</div>
+                    <div className="p-8 text-center text-muted-foreground">Chargement des agences...</div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {filteredAgencies.map((agency) => (

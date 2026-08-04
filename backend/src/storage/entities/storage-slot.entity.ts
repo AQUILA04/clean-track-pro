@@ -6,6 +6,11 @@ export enum StorageSlotStatus {
     RESERVED = 'RESERVED',
 }
 
+export enum SlotType {
+    RECEPTION = 'RECEPTION',
+    DELIVERY = 'DELIVERY',
+}
+
 @Entity('storage_slots')
 @Unique(['name', 'site_id', 'tenant_id'])
 export class StorageSlot {
@@ -21,6 +26,14 @@ export class StorageSlot {
         default: StorageSlotStatus.FREE,
     })
     status: StorageSlotStatus;
+
+    @Column({
+        type: 'enum',
+        enum: SlotType,
+        default: SlotType.RECEPTION,
+        name: 'slot_type',
+    })
+    slot_type: SlotType;
 
     @Column({ name: 'site_id' })
     site_id: string;

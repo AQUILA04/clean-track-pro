@@ -2,6 +2,8 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { OrderItem } from './order-item.entity';
 
 import { OrderStatus } from '../enums/order-status.enum';
+import { DeliveryMode } from '../enums/delivery-mode.enum';
+import { PaymentStatus } from '../../payments/enums/payment-status.enum';
 
 export enum ServiceLevel {
     NORMAL = 'NORMAL',
@@ -12,6 +14,10 @@ export enum ServiceLevel {
 export class Order {
     @PrimaryGeneratedColumn('uuid')
     id: string;
+
+    /** Human-readable reference, e.g. REF-01-2507-000136 */
+    @Column({ type: 'varchar', length: 32, nullable: true })
+    reference: string | null;
 
     @Column()
     tenant_id: string;
@@ -36,11 +42,38 @@ export class Order {
     })
     service_level: ServiceLevel;
 
+    @Column({
+        type: 'enum',
+        enum: DeliveryMode,
+        enumName: 'delivery_mode_enum',
+        default: DeliveryMode.PICKUP,
+    })
+    delivery_mode: DeliveryMode;
+
+    @Column({ type: 'varchar', length: 500, nullable: true })
+    delivery_address: string | null;
+
+    @Column({ type: 'varchar', length: 32, nullable: true })
+    delivery_phone: string | null;
+
+    @Column({ type: 'uuid', nullable: true })
+    locality_id: string | null;
+
     @Column({ type: 'timestamp' })
     due_date: Date;
 
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     total_price: number;
+
+    @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+    amount_paid: number;
+
+    @Column({
+        type: 'enum',
+        enum: PaymentStatus,
+        default: PaymentStatus.UNPAID,
+    })
+    payment_status: PaymentStatus;
 
     @CreateDateColumn()
     created_at: Date;

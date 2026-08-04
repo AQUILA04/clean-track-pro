@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { Shirt, Ticket, Bed, Briefcase, Gem, Package, Home, Box, Tag } from 'lucide-react';
 import { articleTypeService } from '../../services/article-type.service';
 import { ArticleType } from '../../types/article-type';
 import { useOrderDraft } from '../../context/order-draft.context';
@@ -10,6 +11,17 @@ import { ServicePrice } from '../../types/service-price'; // Assuming locally ac
 interface ArticleGridProps {
     className?: string;
 }
+
+const IconMap: Record<string, React.ReactNode> = {
+    Shirt: <Shirt className="h-10 w-10 text-blue-400" strokeWidth={1.5} />,
+    Ticket: <Ticket className="h-10 w-10 text-purple-400" strokeWidth={1.5} />,
+    Bed: <Bed className="h-10 w-10 text-emerald-400" strokeWidth={1.5} />,
+    Briefcase: <Briefcase className="h-10 w-10 text-orange-400" strokeWidth={1.5} />,
+    Gem: <Gem className="h-10 w-10 text-pink-400" strokeWidth={1.5} />,
+    Home: <Home className="h-10 w-10 text-muted-foreground" strokeWidth={1.5} />,
+    Box: <Box className="h-10 w-10 text-muted-foreground" strokeWidth={1.5} />,
+    Tag: <Tag className="h-10 w-10 text-muted-foreground" strokeWidth={1.5} />,
+};
 
 export const ArticleGrid: React.FC<ArticleGridProps> = ({ className }) => {
     const [articleTypes, setArticleTypes] = useState<ArticleType[]>([]);
@@ -94,19 +106,23 @@ export const ArticleGrid: React.FC<ArticleGridProps> = ({ className }) => {
     }
 
     return (
-        <div className={`grid grid-cols-3 gap-4 p-4 ${className}`}>
+        <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4 ${className}`}>
             {articleTypes.map((article) => (
                 <button
                     key={article.id}
                     onClick={() => handleArticleClick(article)}
-                    className={`flex flex-col items-center justify-center p-6 bg-white border rounded-lg shadow-sm transition-all aspect-square
-                        ${touchedArticleId === article.id ? 'scale-95 bg-blue-50 ring-2 ring-blue-300' : 'hover:shadow-md hover:bg-blue-50'}
+                    className={`flex flex-col items-center justify-center p-4 sm:p-6 bg-card border border-border rounded-xl transition-all duration-150 aspect-square min-h-[44px]
+                        ${touchedArticleId === article.id ? 'scale-95 bg-primary/10 ring-2 ring-primary/50' : 'hover:bg-muted/50 hover:border-primary/30'}
                     `}
                 >
-                    <div className="text-3xl mb-2">
-                        {article.icon || '📦'}
+                    <div className="mb-2">
+                        {IconMap[article.icon as string] || (
+                            <Package className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" strokeWidth={1.5} />
+                        )}
                     </div>
-                    <span className="font-medium text-center text-gray-800">{article.label}</span>
+                    <span className="font-medium text-center text-sm sm:text-base text-foreground leading-snug">
+                        {article.label}
+                    </span>
                 </button>
             ))}
         </div>

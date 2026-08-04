@@ -19,45 +19,32 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 
-const agencies = [
-    {
-        value: "all",
-        label: "Toutes les agences",
-    },
-    {
-        value: "paris-08",
-        label: "CleanTrack Paris 08",
-    },
-    {
-        value: "bordeaux",
-        label: "CleanTrack Bordeaux",
-    },
-    {
-        value: "lyon-sud",
-        label: "CleanTrack Lyon Sud",
-    },
-    {
-        value: "marseille",
-        label: "CleanTrack Marseille",
-    },
-    {
-        value: "nantes",
-        label: "CleanTrack Nantes",
-    },
-    {
-        value: "lille",
-        label: "CleanTrack Lille",
-    }
-]
+export type AgencyOption = {
+    value: string
+    label: string
+}
 
 interface AgencySelectorProps {
     onSelect?: (value: string) => void
     defaultValue?: string
+    value?: string
+    agencies?: AgencyOption[]
 }
 
-export function AgencySelector({ onSelect, defaultValue = "all" }: AgencySelectorProps) {
+const DEFAULT_AGENCIES: AgencyOption[] = [{ value: "all", label: "Toutes les agences" }]
+
+export function AgencySelector({
+    onSelect,
+    defaultValue = "all",
+    value: controlledValue,
+    agencies = DEFAULT_AGENCIES,
+}: AgencySelectorProps) {
     const [open, setOpen] = React.useState(false)
-    const [value, setValue] = React.useState(defaultValue)
+    const [internalValue, setInternalValue] = React.useState(defaultValue)
+    const value = controlledValue ?? internalValue
+
+    const selectedLabel =
+        agencies.find((agency) => agency.value === value)?.label || "Sélectionner une agence..."
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -70,9 +57,7 @@ export function AgencySelector({ onSelect, defaultValue = "all" }: AgencySelecto
                 >
                     <div className="flex items-center gap-2 truncate">
                         <Store className="h-4 w-4 text-primary shrink-0" />
-                        {value
-                            ? agencies.find((agency) => agency.value === value)?.label
-                            : "Sélectionner une agence..."}
+                        {selectedLabel}
                     </div>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -86,11 +71,11 @@ export function AgencySelector({ onSelect, defaultValue = "all" }: AgencySelecto
                             {agencies.map((agency) => (
                                 <CommandItem
                                     key={agency.value}
-                                    value={agency.value}
-                                    onSelect={(currentValue) => {
-                                        setValue(currentValue === value ? "" : currentValue)
+                                    value={agency.label}
+                                    onSelect={() => {
+                                        setInternalValue(agency.value)
                                         setOpen(false)
-                                        if (onSelect) onSelect(currentValue)
+                                        onSelect?.(agency.value)
                                     }}
                                 >
                                     <Check

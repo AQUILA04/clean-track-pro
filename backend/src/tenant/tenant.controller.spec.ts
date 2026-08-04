@@ -89,7 +89,11 @@ describe('TenantController (e2e) - RBAC Tests', () => {
 
             const response = await request(app.getHttpServer())
                 .post('/tenants')
-                .send({ name: 'Test Tenant', subdomain: 'test-valid' });
+                .send({
+                    name: 'Test Tenant',
+                    subdomain: 'test-valid',
+                    mainAgency: { name: 'Agence Principale' },
+                });
 
             expect(response.status).toBe(201);
             await app.close();

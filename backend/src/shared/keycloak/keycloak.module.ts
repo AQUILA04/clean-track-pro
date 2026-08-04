@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import {
     AuthGuard,
     KeycloakConnectModule,
@@ -10,9 +11,12 @@ import {
     TokenValidation,
 } from 'nest-keycloak-connect';
 import { KeycloakService } from './keycloak.service';
+import { TenantActiveGuard } from '../guards/tenant-active.guard';
+import { Tenant } from '../../tenant/entities/tenant.entity';
 
 @Module({
     imports: [
+        TypeOrmModule.forFeature([Tenant]),
         KeycloakConnectModule.registerAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => {
@@ -41,8 +45,7 @@ import { KeycloakService } from './keycloak.service';
     ],
     providers: [
         KeycloakService,
-        // Global guards effectively protect all routes by default
-        // Use @Public() to exempt routes
+        // Order matters: AuthGuard must populate request.user before TenantActiveGuard.
         {
             provide: APP_GUARD,
             useClass: AuthGuard,
@@ -54,6 +57,10 @@ import { KeycloakService } from './keycloak.service';
         {
             provide: APP_GUARD,
             useClass: RoleGuard,
+        },
+        {
+            provide: APP_GUARD,
+            useClass: TenantActiveGuard,
         },
     ],
     exports: [KeycloakConnectModule, KeycloakService],

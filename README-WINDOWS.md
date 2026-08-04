@@ -35,7 +35,17 @@ cd clean-track-pro
 1. Lancez **Docker Desktop**
 2. Attendez que Docker soit complètement démarré (icône verte dans la barre des tâches)
 
-### Étape 3 : Exécuter le Setup Automatique
+### Étape 3 : Stack Docker complète (recommandé)
+
+Prérequis : `cert\ZscalerRootCA.pem` (voir `cert\README.md`).
+
+```cmd
+npm run dev:up
+```
+
+Puis ouvrez http://localhost:3001
+
+### Étape 3bis : Setup classique (apps hors Docker)
 
 Double-cliquez sur `setup-final.bat` ou exécutez dans le terminal :
 
