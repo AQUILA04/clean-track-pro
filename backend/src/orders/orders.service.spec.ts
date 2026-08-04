@@ -10,6 +10,7 @@ import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
 import { DataSource } from 'typeorm';
 import { StorageService } from '../storage/storage.service';
 import { QuotaService } from '../subscription/services/quota.service';
+import { NotificationService } from '../notifications/notification.service';
 import { Client } from '../clients/entities/client.entity';
 import { Site } from '../sites/entities/site.entity';
 
@@ -109,6 +110,10 @@ describe('OrdersService', () => {
         recordUsage: jest.fn().mockResolvedValue(undefined),
     };
 
+    const mockNotificationService = {
+        notify: jest.fn().mockResolvedValue(undefined),
+    };
+
     beforeEach(async () => {
         jest.clearAllMocks();
         mockOrderRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
@@ -158,6 +163,10 @@ describe('OrdersService', () => {
                 {
                     provide: QuotaService,
                     useValue: mockQuotaService,
+                },
+                {
+                    provide: NotificationService,
+                    useValue: mockNotificationService,
                 },
             ],
         }).compile();

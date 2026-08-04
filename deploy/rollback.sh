@@ -95,8 +95,9 @@ echo "--------------------------------------------------"
 # Extract images from release file
 FRONTEND_IMAGE=$(grep '^FRONTEND_IMAGE=' "$RESOLVED_RELEASE_FILE" | cut -d= -f2-)
 BACKEND_IMAGE=$(grep '^BACKEND_IMAGE=' "$RESOLVED_RELEASE_FILE" | cut -d= -f2-)
+KEYCLOAK_IMAGE=$(grep '^KEYCLOAK_IMAGE=' "$RESOLVED_RELEASE_FILE" | cut -d= -f2-)
 
-if [[ -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" ]]; then
+if [[ -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" || -z "$KEYCLOAK_IMAGE" ]]; then
   echo "Error: Could not parse images from release file." >&2
   exit 1
 fi
@@ -118,6 +119,7 @@ set_env_var() {
 
 set_env_var "FRONTEND_IMAGE" "$FRONTEND_IMAGE"
 set_env_var "BACKEND_IMAGE" "$BACKEND_IMAGE"
+set_env_var "KEYCLOAK_IMAGE" "$KEYCLOAK_IMAGE"
 
 echo "Pulling images..."
 docker compose \

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Usage:
-#   deploy.sh [--force-update | -fu] <env> [frontend_image] [backend_image]
+#   deploy.sh [--force-update | -fu] <env> [frontend_image] [backend_image] [keycloak_image]
 #   env = test|prod
 #
 # Options:
@@ -10,11 +10,11 @@ set -euo pipefail
 #                          avant d'exécuter le déploiement.
 #
 # Exemples:
-#   ./deploy.sh test ghcr.io/aquila04/clean-track-pro-frontend:abc123 ghcr.io/aquila04/clean-track-pro-backend:abc123
-#   ./deploy.sh -fu prod ghcr.io/aquila04/clean-track-pro-frontend:abc123 ghcr.io/aquila04/clean-track-pro-backend:abc123
+#   ./deploy.sh test ghcr.io/aquila04/clean-track-pro-frontend:abc123 ghcr.io/aquila04/clean-track-pro-backend:abc123 ghcr.io/aquila04/clean-track-pro-keycloak:abc123
+#   ./deploy.sh -fu prod ghcr.io/aquila04/clean-track-pro-frontend:abc123 ghcr.io/aquila04/clean-track-pro-backend:abc123 ghcr.io/aquila04/clean-track-pro-keycloak:abc123
 
 if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 [--force-update | -fu] <env> [frontend_image] [backend_image]" >&2
+  echo "Usage: $0 [--force-update | -fu] <env> [frontend_image] [backend_image] [keycloak_image]" >&2
   exit 2
 fi
 
@@ -25,7 +25,7 @@ if [[ "$1" == "--force-update" || "$1" == "-fu" ]]; then
     shift
     if [ "$#" -lt 1 ]; then
       echo "Error: Missing environment argument after --force-update." >&2
-      echo "Usage: $0 [--force-update | -fu] <env> [frontend_image] [backend_image]" >&2
+      echo "Usage: $0 [--force-update | -fu] <env> [frontend_image] [backend_image] [keycloak_image]" >&2
       exit 2
     fi
     echo ">>> [deploy] Re-executing updated deploy.sh..."
@@ -35,6 +35,7 @@ fi
 ENV="$1"
 FRONTEND_ARG="${2:-}"
 BACKEND_ARG="${3:-}"
+KEYCLOAK_ARG="${4:-}"
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.$ENV.yml"
@@ -66,9 +67,15 @@ else
   BACKEND_IMAGE="${BACKEND_IMAGE:-}"
 fi
 
-if [[ -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" ]]; then
-  echo "Error: FRONTEND_IMAGE and BACKEND_IMAGE must be provided either as arguments or set in $ENV_FILE" >&2
-  echo "Usage: $0 [--force-update | -fu] <env> [frontend_image] [backend_image]" >&2
+if [[ -n "$KEYCLOAK_ARG" ]]; then
+  KEYCLOAK_IMAGE="$KEYCLOAK_ARG"
+else
+  KEYCLOAK_IMAGE="${KEYCLOAK_IMAGE:-}"
+fi
+
+if [[ -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" || -z "$KEYCLOAK_IMAGE" ]]; then
+  echo "Error: FRONTEND_IMAGE, BACKEND_IMAGE and KEYCLOAK_IMAGE must be provided either as arguments or set in $ENV_FILE" >&2
+  echo "Usage: $0 [--force-update | -fu] <env> [frontend_image] [backend_image] [keycloak_image]" >&2
   exit 1
 fi
 
@@ -98,6 +105,9 @@ fi
 if [[ -n "$BACKEND_ARG" ]]; then
   set_env_var "BACKEND_IMAGE" "$BACKEND_IMAGE"
 fi
+if [[ -n "$KEYCLOAK_ARG" ]]; then
+  set_env_var "KEYCLOAK_IMAGE" "$KEYCLOAK_IMAGE"
+fi
 
 TIMESTAMP=$(date -u +"%Y%m%dT%H%M%SZ")
 RELEASE_FILE="$RELEASES_DIR/${ENV}_${TIMESTAMP}.txt"
@@ -108,6 +118,7 @@ echo "Using env file:     $ENV_FILE"
 echo "Saving release metadata to $RELEASE_FILE"
 echo "FRONTEND_IMAGE=$FRONTEND_IMAGE" > "$RELEASE_FILE"
 echo "BACKEND_IMAGE=$BACKEND_IMAGE"   >> "$RELEASE_FILE"
+echo "KEYCLOAK_IMAGE=$KEYCLOAK_IMAGE" >> "$RELEASE_FILE"
 echo "TIMESTAMP=$TIMESTAMP"           >> "$RELEASE_FILE"
 
 echo "Pulling images..."

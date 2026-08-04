@@ -112,6 +112,7 @@ NEXTAUTH_SECRET=${_nextauth_secret}
 # Populated automatically by deploy.sh — do not edit manually
 FRONTEND_IMAGE=
 BACKEND_IMAGE=
+KEYCLOAK_IMAGE=
 EOF
   chmod 600 "$TEST_ENV"
   echo "      Created $TEST_ENV"
@@ -149,6 +150,7 @@ NEXTAUTH_SECRET=${_nextauth_secret}
 # Populated automatically by deploy.sh — do not edit manually
 FRONTEND_IMAGE=
 BACKEND_IMAGE=
+KEYCLOAK_IMAGE=
 EOF
   chmod 600 "$PROD_ENV"
   echo "      Created $PROD_ENV"

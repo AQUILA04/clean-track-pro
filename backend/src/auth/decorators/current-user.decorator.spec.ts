@@ -1,7 +1,20 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 import { CurrentUser, AuthUser } from './current-user.decorator';
 
+/** Extract the factory passed to createParamDecorator (NestJS returns a decorator, not the factory). */
+function getParamDecoratorFactory(decorator: Function) {
+    class Test {
+        public test(@decorator() _value: unknown) {}
+    }
+
+    const args = Reflect.getMetadata(ROUTE_ARGS_METADATA, Test.prototype.constructor, 'test');
+    return args[Object.keys(args)[0]].factory;
+}
+
 describe('CurrentUser Decorator', () => {
+    const factory = getParamDecoratorFactory(CurrentUser);
+
     it('should extract user from request and return AuthUser', () => {
         const mockUser = {
             sub: 'user-123',
@@ -19,9 +32,6 @@ describe('CurrentUser Decorator', () => {
             }),
         } as ExecutionContext;
 
-        // Get the factory function
-        const factory = CurrentUser();
-        // Call it with proper parameters
         const result = factory(undefined, mockContext) as AuthUser;
 
         expect(result).toEqual({
@@ -48,7 +58,6 @@ describe('CurrentUser Decorator', () => {
             }),
         } as ExecutionContext;
 
-        const factory = CurrentUser();
         const result = factory(undefined, mockContext) as AuthUser;
 
         expect(result.email).toBe('testuser');
@@ -60,8 +69,6 @@ describe('CurrentUser Decorator', () => {
                 getRequest: () => ({ user: null }),
             }),
         } as ExecutionContext;
-
-        const factory = CurrentUser();
 
         expect(() => factory(undefined, mockContext)).toThrow(UnauthorizedException);
         expect(() => factory(undefined, mockContext)).toThrow('User not authenticated');
@@ -79,7 +86,6 @@ describe('CurrentUser Decorator', () => {
             }),
         } as ExecutionContext;
 
-        const factory = CurrentUser();
         const result = factory(undefined, mockContext) as AuthUser;
 
         expect(result.roles).toEqual([]);
@@ -99,9 +105,29 @@ describe('CurrentUser Decorator', () => {
             }),
         } as ExecutionContext;
 
-        const factory = CurrentUser();
         const result = factory(undefined, mockContext) as AuthUser;
 
         expect(result.tenant_id).toBe('tenant-uuid-789');
+    });
+
+    it('should normalize array tenant_id and site_ids from JWT claims', () => {
+        const mockUser = {
+            sub: 'user-123',
+            email: 'admin@tenant.com',
+            realm_access: { roles: ['Admin_Tenant'] },
+            tenant_id: ['tenant-uuid-789'],
+            site_ids: ['site-1', 'site-2'],
+        };
+
+        const mockContext = {
+            switchToHttp: () => ({
+                getRequest: () => ({ user: mockUser }),
+            }),
+        } as ExecutionContext;
+
+        const result = factory(undefined, mockContext) as AuthUser;
+
+        expect(result.tenant_id).toBe('tenant-uuid-789');
+        expect(result.site_ids).toEqual(['site-1', 'site-2']);
     });
 });

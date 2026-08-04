@@ -39,6 +39,7 @@ jobs:
     outputs:
       frontend_image: ${{ steps.resolve.outputs.frontend_image }}
       backend_image: ${{ steps.resolve.outputs.backend_image }}
+      keycloak_image: ${{ steps.resolve.outputs.keycloak_image }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,12 +87,15 @@ jobs:
 
           FRONTEND_IMAGE=$(resolve_sha "frontend")
           BACKEND_IMAGE=$(resolve_sha "backend")
+          KEYCLOAK_IMAGE=$(resolve_sha "keycloak")
 
           echo "Resolved frontend: $FRONTEND_IMAGE"
           echo "Resolved backend:  $BACKEND_IMAGE"
+          echo "Resolved keycloak: $KEYCLOAK_IMAGE"
 
           echo "frontend_image=$FRONTEND_IMAGE" >> "$GITHUB_OUTPUT"
           echo "backend_image=$BACKEND_IMAGE"   >> "$GITHUB_OUTPUT"
+          echo "keycloak_image=$KEYCLOAK_IMAGE" >> "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------------------
   # Deploy to TEST
@@ -115,10 +119,11 @@ jobs:
           set -euo pipefail
           FRONTEND_IMAGE='${{ needs.resolve-images.outputs.frontend_image }}'
           BACKEND_IMAGE='${{ needs.resolve-images.outputs.backend_image }}'
+          KEYCLOAK_IMAGE='${{ needs.resolve-images.outputs.keycloak_image }}'
           SERVER_USER='${{ secrets.TEST_SERVER_USER }}'
           SERVER_HOST='${{ secrets.TEST_SERVER_HOST }}'
 
-          echo "Deploying $FRONTEND_IMAGE and $BACKEND_IMAGE to TEST ($SERVER_HOST)"
+          echo "Deploying $FRONTEND_IMAGE, $BACKEND_IMAGE and $KEYCLOAK_IMAGE to TEST ($SERVER_HOST)"
 
           ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" bash << 'ENDSSH'
           set -euo pipefail
@@ -137,7 +142,7 @@ jobs:
 
           # Exécuter init.sh avec tous les secrets injectés via SSH
           ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" \
-            "sudo /opt/cleantrack/init.sh test '$FRONTEND_IMAGE' '$BACKEND_IMAGE' \
+            "sudo /opt/cleantrack/init.sh test '$FRONTEND_IMAGE' '$BACKEND_IMAGE' '$KEYCLOAK_IMAGE' \
               --ghcr-username '${{ secrets.GHCR_USERNAME }}' \
               --ghcr-token '${{ secrets.GHCR_TOKEN }}' \
               --db-user '${{ secrets.DB_USER }}' \
@@ -176,10 +181,11 @@ jobs:
           set -euo pipefail
           FRONTEND_IMAGE='${{ needs.resolve-images.outputs.frontend_image }}'
           BACKEND_IMAGE='${{ needs.resolve-images.outputs.backend_image }}'
+          KEYCLOAK_IMAGE='${{ needs.resolve-images.outputs.keycloak_image }}'
           SERVER_USER='${{ secrets.PROD_SERVER_USER }}'
           SERVER_HOST='${{ secrets.PROD_SERVER_HOST }}'
 
-          echo "Deploying $FRONTEND_IMAGE and $BACKEND_IMAGE to PROD ($SERVER_HOST)"
+          echo "Deploying $FRONTEND_IMAGE, $BACKEND_IMAGE and $KEYCLOAK_IMAGE to PROD ($SERVER_HOST)"
 
           ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" bash << 'ENDSSH'
           set -euo pipefail
@@ -198,7 +204,7 @@ jobs:
 
           # Exécuter init.sh avec tous les secrets injectés via SSH
           ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" \
-            "sudo /opt/cleantrack/init.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE' \
+            "sudo /opt/cleantrack/init.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE' '$KEYCLOAK_IMAGE' \
               --ghcr-username '${{ secrets.GHCR_USERNAME }}' \
               --ghcr-token '${{ secrets.GHCR_TOKEN }}' \
               --db-user '${{ secrets.DB_USER }}' \
@@ -244,13 +250,14 @@ jobs:
 
           FRONTEND_IMAGE=$(grep '^FRONTEND_IMAGE=' release.txt | cut -d= -f2-)
           BACKEND_IMAGE=$(grep '^BACKEND_IMAGE=' release.txt | cut -d= -f2-)
+          KEYCLOAK_IMAGE=$(grep '^KEYCLOAK_IMAGE=' release.txt | cut -d= -f2-)
 
-          if [[ -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" ]]; then
+          if [[ -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" || -z "$KEYCLOAK_IMAGE" ]]; then
             echo "Could not determine images to promote" >&2
             exit 2
           fi
 
-          echo "Promoting to PROD: frontend=$FRONTEND_IMAGE backend=$BACKEND_IMAGE"
+          echo "Promoting to PROD: frontend=$FRONTEND_IMAGE backend=$BACKEND_IMAGE keycloak=$KEYCLOAK_IMAGE"
 
           # Bootstrap init.sh sur PROD si absent
           ssh -o StrictHostKeyChecking=no -i private_key "$PROD_USER@$PROD_HOST" bash << 'ENDSSH'
@@ -267,7 +274,7 @@ jobs:
 
           # Exécuter init.sh sur PROD avec les images de TEST
           ssh -o StrictHostKeyChecking=no -i private_key "$PROD_USER@$PROD_HOST" \
-            "sudo /opt/cleantrack/init.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE' \
+            "sudo /opt/cleantrack/init.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE' '$KEYCLOAK_IMAGE' \
               --ghcr-username '${{ secrets.GHCR_USERNAME }}' \
               --ghcr-token '${{ secrets.GHCR_TOKEN }}' \
               --db-user '${{ secrets.DB_USER }}' \

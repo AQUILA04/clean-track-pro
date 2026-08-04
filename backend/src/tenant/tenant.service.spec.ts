@@ -184,11 +184,25 @@ describe('TenantService', () => {
 
     it('should update tenant config', async () => {
         const id = 'tenant-id';
-        const dto = { express_multiplier: 2.0, express_sla_hours: 12 };
+        const dto = {
+            express_multiplier: 2.0,
+            express_sla_hours: 12,
+            express_enabled: true,
+            currency: 'EUR',
+            weight_unit: 'kg',
+            express_visibility: {
+                showTTC: true,
+                allowDiscounts: false,
+                showInventory: true,
+            },
+        };
 
-        const result = await service.updateConfig(id, dto);
+        await service.updateConfig(id, dto);
 
-        expect(mockRepository.update).toHaveBeenCalledWith(id, dto);
+        expect(mockRepository.update).toHaveBeenCalledWith(id, {
+            ...dto,
+            currency: 'EUR',
+        });
         expect(mockRepository.findOneBy).toHaveBeenCalledWith({ id });
     });
 });

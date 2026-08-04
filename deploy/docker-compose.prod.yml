@@ -29,7 +29,7 @@ services:
       - internal
 
   keycloak:
-    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.5.2}
+    image: ${KEYCLOAK_IMAGE}
     restart: unless-stopped
     depends_on:
       postgres:

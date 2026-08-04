@@ -44,7 +44,7 @@ services:
       - "traefik.http.services.cleantrack-test-maildev.loadbalancer.server.port=1080"
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.1
+    image: ${KEYCLOAK_IMAGE}
     restart: unless-stopped
     depends_on:
       postgres:

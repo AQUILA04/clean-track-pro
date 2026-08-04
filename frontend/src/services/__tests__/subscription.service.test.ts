@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { mergePlanUpdate, type SubscriptionPlan, type UpdateSubscriptionPlanDto } from '../subscription.service';
 
 const basePlan: SubscriptionPlan = {

@@ -34,7 +34,12 @@ describe('PrintingService', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
         process.env.NEXT_PUBLIC_PRINT_PROXY_URL = 'http://localhost:8090';
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
     });
 
     it('should send a POST request with the correct payload to the proxy', async () => {

@@ -109,7 +109,18 @@ describe('TenantController (e2e) - RBAC Tests', () => {
 
             const response = await request(app.getHttpServer())
                 .patch('/tenants/me/config')
-                .send({ express_multiplier: 2.0, express_sla_hours: 12 });
+                .send({
+                    express_multiplier: 2.0,
+                    express_sla_hours: 12,
+                    express_enabled: true,
+                    currency: 'XOF',
+                    weight_unit: 'kg',
+                    express_visibility: {
+                        showTTC: true,
+                        allowDiscounts: false,
+                        showInventory: true,
+                    },
+                });
 
             expect(response.status).toBe(200);
             expect(response.body.data.express_multiplier).toBe(2.0);

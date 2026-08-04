@@ -1,3 +1,4 @@
+# Custom Keycloak image (themes + Zscaler CA). Published by CI as ghcr.io/<repo>-keycloak:<sha>
 FROM quay.io/keycloak/keycloak:26.5.2
 
 USER root

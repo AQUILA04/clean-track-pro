@@ -10,7 +10,7 @@
 #   - Si /opt/cleantrack/ existe déjà  → déploiement direct (setup ignoré)
 #
 # Usage (appelé par le CD via SSH) :
-#   ./init.sh <env> <frontend_image> <backend_image> [--force-update | -fu] \
+#   ./init.sh <env> <frontend_image> <backend_image> <keycloak_image> [--force-update | -fu] \
 #     [--db-password <val>] \
 #     [--db-user <val>] \
 #     [--db-name <val>] \
@@ -28,6 +28,7 @@
 #   sudo /opt/cleantrack/init.sh prod \
 #       ghcr.io/aquila04/clean-track-pro-frontend:<sha> \
 #       ghcr.io/aquila04/clean-track-pro-backend:<sha> \
+#       ghcr.io/aquila04/clean-track-pro-keycloak:<sha> \
 #       --db-password "..." \
 #       --keycloak-admin-password "..." \
 #       ...
@@ -44,6 +45,7 @@ GITHUB_RAW="https://raw.githubusercontent.com/AQUILA04/clean-track-pro/main/depl
 ENV=""
 FRONTEND_IMAGE=""
 BACKEND_IMAGE=""
+KEYCLOAK_IMAGE=""
 FORCE_UPDATE=false
 
 DB_USER=""
@@ -72,6 +74,10 @@ fi
 if [[ "$#" -ge 1 && "$1" != --* && "$1" != -* ]]; then
     BACKEND_IMAGE="$1"; shift
 fi
+# Fourth positional: keycloak image
+if [[ "$#" -ge 1 && "$1" != --* && "$1" != -* ]]; then
+    KEYCLOAK_IMAGE="$1"; shift
+fi
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -94,9 +100,9 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-if [[ -z "$ENV" || -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" ]]; then
-    echo "Error: env, frontend_image and backend_image are required." >&2
-    echo "Usage: $0 <env> <frontend_image> <backend_image> [options...]" >&2
+if [[ -z "$ENV" || -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" || -z "$KEYCLOAK_IMAGE" ]]; then
+    echo "Error: env, frontend_image, backend_image and keycloak_image are required." >&2
+    echo "Usage: $0 <env> <frontend_image> <backend_image> <keycloak_image> [options...]" >&2
     exit 1
 fi
 
@@ -107,7 +113,7 @@ if [[ "$FORCE_UPDATE" == "true" ]]; then
     echo ">>> [init] --force-update: refreshing deploy scripts from GitHub..."
     bash <(curl -sSL "$GITHUB_RAW/update-deploy.sh")
     echo ">>> [init] Re-executing updated init.sh..."
-    exec "$DEPLOY_DIR/init.sh" "$ENV" "$FRONTEND_IMAGE" "$BACKEND_IMAGE" \
+    exec "$DEPLOY_DIR/init.sh" "$ENV" "$FRONTEND_IMAGE" "$BACKEND_IMAGE" "$KEYCLOAK_IMAGE" \
         ${DB_USER:+--db-user "$DB_USER"} \
         ${DB_PASSWORD:+--db-password "$DB_PASSWORD"} \
         ${DB_NAME:+--db-name "$DB_NAME"} \
@@ -171,6 +177,6 @@ echo ">>> [init] Launching deployment: env=$ENV"
 export GHCR_USERNAME="${GHCR_USERNAME:-}"
 export GHCR_TOKEN="${GHCR_TOKEN:-}"
 
-bash "$DEPLOY_DIR/deploy.sh" "$ENV" "$FRONTEND_IMAGE" "$BACKEND_IMAGE"
+bash "$DEPLOY_DIR/deploy.sh" "$ENV" "$FRONTEND_IMAGE" "$BACKEND_IMAGE" "$KEYCLOAK_IMAGE"
 
 echo ">>> [init] Done."

@@ -30,7 +30,7 @@ describe('AgencyCard', () => {
     it('[P1] displays active status badge', () => {
         render(<AgencyCard agency={mockAgency} />);
 
-        expect(screen.getByText('ACTIF')).toBeInTheDocument();
+        expect(screen.getByText('Actif')).toBeInTheDocument();
     });
 
     it('[P1] renders manager avatars with initials', () => {
