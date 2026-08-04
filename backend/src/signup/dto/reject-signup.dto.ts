@@ -1,0 +1,8 @@
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+
+export class RejectSignupDto {
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    reason?: string;
+}

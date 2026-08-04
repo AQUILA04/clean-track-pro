@@ -1,0 +1,16 @@
+# One-shot Keycloak bootstrap for docker-compose.dev.yml
+FROM node:20-alpine
+WORKDIR /app
+
+COPY --from=certs ZscalerRootCA.pem /usr/local/share/ca-certificates/ZscalerRootCA.crt
+RUN printf '\n' >> /etc/ssl/certs/ca-certificates.crt \
+    && cat /usr/local/share/ca-certificates/ZscalerRootCA.crt >> /etc/ssl/certs/ca-certificates.crt
+ENV NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/ZscalerRootCA.crt
+ENV NPM_CONFIG_CAFILE=/etc/ssl/certs/ca-certificates.crt
+
+COPY package*.json ./
+COPY tsconfig.json ./
+RUN npm ci
+COPY scripts ./scripts
+
+CMD ["npx", "ts-node", "scripts/setup-keycloak.ts"]

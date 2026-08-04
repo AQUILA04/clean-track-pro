@@ -1,0 +1,36 @@
+---
+description: Always translate domain statuses to French via StatusLabel / formatStatusLabel
+alwaysApply: true
+---
+
+# Statuts — toujours en français
+
+Les codes techniques (`CREATED`, `IN_PROGRESS`, `READY`, `PAID`, etc.) **ne doivent jamais** apparaître tels quels dans l’UI (tableaux, badges, toasts, timelines, emails).
+
+## Obligatoire
+
+- Utiliser `formatStatusLabel(status, kind)` (`frontend/src/lib/status-labels.ts`) ou le composant `<StatusLabel status={…} />` (`frontend/src/components/shared/StatusLabel.tsx`).
+- Équivalent d’un pipe Angular : toute affichage de statut passe par cette couche.
+
+```tsx
+// ❌ BAD
+<span>{order.status}</span>
+<span>IN_PROGRESS</span>
+
+// ✅ GOOD
+<StatusLabel status={order.status} />
+<span>{formatStatusLabel(order.status)}</span>
+<StatusLabel status={order.payment_status} kind="payment" />
+```
+
+## Dictionnaires
+
+| Kind | Exemples de libellés |
+|------|----------------------|
+| `order` (défaut) | Créée, En cours, Prête, Rangée, Livrée, Annulée, En retard |
+| `payment` | Impayé, Partiel, Payé |
+| `timeline` | Réceptionnée, Tri & marquage, Lavage en cours, Attente |
+
+- Styles pills : `getStatusPillClass()` — ne pas inventer de badges ad hoc avec le code brut.
+- Nouveau statut backend → ajouter la clé FR dans `status-labels.ts` **avant** de l’afficher.
+- Permissions / APIs / enums TS : codes techniques OK.

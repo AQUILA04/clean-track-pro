@@ -1,0 +1,17 @@
+# Root context used by scripts/dev/Dockerfile.init
+node_modules
+frontend/node_modules
+backend/node_modules
+frontend/.next
+backend/dist
+**/coverage
+**/playwright-report
+**/test-results
+.git
+.cursor
+_bmad
+docs
+*.log
+.env
+.env.*
+!.env.dev.example

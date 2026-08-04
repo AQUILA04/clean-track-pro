@@ -1,0 +1,41 @@
+---
+description: UI display conventions — role labels and never show raw UUIDs
+alwaysApply: true
+---
+
+# Affichage UI — CleanTrack Pro
+
+## 1. Rôles (libellés utilisateur)
+
+Les identifiants techniques Keycloak restent dans le code (`Admin_Site`, `Admin_Tenant`, etc.).
+Ils **ne doivent jamais** apparaître dans les textes visibles (copy, toasts, tooltips, tableaux, aides, emails).
+
+| Rôle technique | Libellé UI | Variante courte acceptée |
+|----------------|------------|--------------------------|
+| `Admin_Site` | **Manager d'agence** | — |
+| `Admin_Tenant` | **Manager général** | **Admin** |
+| `User_Site` | **Opérateur d'agence** | Opérateur |
+| `Livreur` | **Livreur** | — |
+| `Superadmin` / `Super_Admin` | **Superadmin** | — |
+
+- Badges / sélecteurs : `getRoleDisplayLabel()` / `ROLE_DISPLAY_LABELS` (`frontend/src/lib/roles.ts`).
+- Prose : « Manager d'agence » / « Manager général » (ou « Admin »), jamais « admin site », « admin tenant », `Admin_Site`, `Admin_Tenant`.
+- Permissions, guards, Keycloak, APIs : noms techniques OK.
+
+## 2. Identifiants métier — jamais d’UUID nu
+
+**Interdit** d’afficher un UUID (complet ou tronqué type `100571e1` / `f7242c74`) comme seul libellé visible pour :
+
+| Entité | Afficher | Fallback si introuvable |
+|--------|----------|-------------------------|
+| Opérateur / utilisateur | Prénom + nom (sinon email / username) | « Opérateur inconnu » — pas l’UUID |
+| Agence / site | Nom de l’agence | « Agence inconnue » |
+| Commande | `reference` (ex. CTP-…) | `#` + 8 premiers caractères **uniquement** si aucune référence |
+| Client | Nom (ou raison sociale) | Code client / téléphone — pas l’UUID |
+
+### Règles
+
+- Charger les libellés (users, sites, clients) ou s’appuyer sur des champs déjà dénormalisés dans l’API (`client_name`, `reference`, `site.name`, etc.).
+- Si l’API ne renvoie que des IDs, enrichir côté front (lookup) **ou** étendre la réponse backend — ne pas shipper un tableau d’UUIDs.
+- Un UUID tronqué n’est acceptable **que** comme fallback temporaire pour une commande **sans** `reference`, jamais pour opérateur, agence ou client.
+- Relecture avant de terminer : chercher `.slice(0, 8)` / IDs bruts dans le JSX des écrans concernés.

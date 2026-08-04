@@ -1,0 +1,223 @@
+# Local full-stack development — ready to test in the browser.
+# Requires cert/ZscalerRootCA.pem (corporate proxy CA), same pattern as BCMS.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d --build
+#   # wait until init-keycloak exits 0, then open http://localhost:3001
+#
+# Stop:
+#   docker compose -f docker-compose.dev.yml down
+#
+# Reset volumes:
+#   docker compose -f docker-compose.dev.yml down -v
+
+name: cleantrack-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-cleantrack}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-cleantrack}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  maildev:
+    image: maildev/maildev
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+    environment:
+      MAILDEV_WEB_PORT: 1080
+      MAILDEV_SMTP_PORT: 1025
+
+  keycloak:
+    build:
+      context: ./keycloak
+      additional_contexts:
+        certs: ./cert
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-cleantrack}
+      KC_DB_USERNAME: ${DB_USER:-postgres}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    command: start-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /realms/master HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && timeout 3 cat <&3 | grep -qi 'realm\\|html\\|json'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  init-keycloak:
+    build:
+      context: .
+      dockerfile: scripts/dev/Dockerfile.init
+      additional_contexts:
+        certs: ./cert
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-cleantrack}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-cleantrack-client}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-cleantrack-dev-secret}
+      FRONTEND_URL: http://localhost:3001
+      KEYCLOAK_SMTP_HOST: ${KEYCLOAK_SMTP_HOST:-maildev}
+      KEYCLOAK_SMTP_PORT: ${KEYCLOAK_SMTP_PORT:-1025}
+      KEYCLOAK_SMTP_FROM: ${KEYCLOAK_SMTP_FROM:-suppoort@cleantrack.pro}
+      KEYCLOAK_SMTP_FROM_DISPLAY_NAME: ${KEYCLOAK_SMTP_FROM_DISPLAY_NAME:-Support CleanTrackPro}
+      KEYCLOAK_SMTP_REPLY_TO: ${KEYCLOAK_SMTP_REPLY_TO:-suppoort@cleantrack.pro}
+      KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME: ${KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME:-Support CleanTrackPro}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      additional_contexts:
+        certs: ./cert
+    ports:
+      - "3000:3000"
+    # So KEYCLOAK_AUTH_SERVER_URL=http://localhost:8080 matches token iss
+    # and is reachable from inside the container (Docker Desktop / Compose).
+    extra_hosts:
+      - "localhost:host-gateway"
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-cleantrack}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Issuer seen by the browser / tokens
+      KEYCLOAK_AUTH_SERVER_URL: http://localhost:8080
+      # Admin API inside the Docker network
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-cleantrack}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-cleantrack-client}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-cleantrack-dev-secret}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      TYPEORM_SYNC: ${TYPEORM_SYNC:-false}
+      API_URL: http://localhost:3000
+      MAIL_HOST: maildev
+      MAIL_PORT: 1025
+      MAIL_FROM: noreply@cleantrack.local
+      MAIL_SECURE: "false"
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_PAYMENT_LINK: ${STRIPE_PAYMENT_LINK:-https://buy.stripe.com/test_28EaEZdxx52n2g95LW0ZW00}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      init-keycloak:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://127.0.0.1:3000/',(r)=>process.exit(0)).on('error',()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  init-seed:
+    build:
+      context: .
+      dockerfile: scripts/dev/Dockerfile.seed
+      additional_contexts:
+        certs: ./cert
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-cleantrack}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: "no"
+
+  frontend:
+    build:
+      context: ./frontend
+      additional_contexts:
+        certs: ./cert
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3000
+        KEYCLOAK_CLIENT_ID: cleantrack-client
+        KEYCLOAK_CLIENT_SECRET: cleantrack-dev-secret
+        KEYCLOAK_ISSUER: http://localhost:8080/realms/cleantrack
+        NEXTAUTH_URL: http://localhost:3001
+        NEXTAUTH_SECRET: cleantrack-dev-nextauth-secret-min-32-chars
+    ports:
+      - "3001:3001"
+    # NextAuth fetches OIDC discovery from KEYCLOAK_ISSUER (localhost:8080)
+    extra_hosts:
+      - "localhost:host-gateway"
+    environment:
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      # Hardcoded for docker dev — do not inherit a wrong NEXTAUTH_URL from host .env
+      NEXTAUTH_URL: http://localhost:3001
+      NEXTAUTH_SECRET: cleantrack-dev-nextauth-secret-min-32-chars
+      KEYCLOAK_CLIENT_ID: cleantrack-client
+      KEYCLOAK_CLIENT_SECRET: cleantrack-dev-secret
+      KEYCLOAK_ISSUER: http://localhost:8080/realms/cleantrack
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_PAYMENT_LINK: ${STRIPE_PAYMENT_LINK:-https://buy.stripe.com/test_28EaEZdxx52n2g95LW0ZW00}
+    depends_on:
+      backend:
+        condition: service_started
+      init-keycloak:
+        condition: service_completed_successfully
+      init-seed:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_dev_data:

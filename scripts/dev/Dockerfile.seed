@@ -1,0 +1,31 @@
+# One-shot dev database seed for docker-compose.dev.yml
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+
+
+COPY --from=certs ZscalerRootCA.pem /usr/local/share/ca-certificates/ZscalerRootCA.crt
+
+RUN printf '\n' >> /etc/ssl/certs/ca-certificates.crt \
+
+    && cat /usr/local/share/ca-certificates/ZscalerRootCA.crt >> /etc/ssl/certs/ca-certificates.crt
+
+ENV NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/ZscalerRootCA.crt
+
+ENV NPM_CONFIG_CAFILE=/etc/ssl/certs/ca-certificates.crt
+
+
+
+COPY backend/package*.json ./
+
+RUN npm ci --legacy-peer-deps
+
+COPY backend/ .
+
+
+
+CMD ["npx", "ts-node", "scripts/seed-e2e-data.ts"]
+
+
