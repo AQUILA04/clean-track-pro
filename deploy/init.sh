@@ -174,25 +174,11 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 3 — Deploy (pass mail/API overrides so existing .env stays complete)
+# Step 3 — Deploy (images + compose only; secrets live in /opt/cleantrack/<env>/.env)
 # ---------------------------------------------------------------------------
 echo ">>> [init] Launching deployment: env=$ENV"
 export GHCR_USERNAME="${GHCR_USERNAME:-}"
 export GHCR_TOKEN="${GHCR_TOKEN:-}"
-export CT_API_HOSTNAME_PROD="${API_HOSTNAME_PROD:-}"
-export CT_MAIL_HOST="${MAIL_HOST:-}"
-export CT_MAIL_PORT="${MAIL_PORT:-}"
-export CT_MAIL_USER="${MAIL_USER:-}"
-export CT_MAIL_PASS="${MAIL_PASS:-}"
-export CT_MAIL_FROM="${MAIL_FROM:-}"
-export CT_APP_HOSTNAME_PROD="${APP_HOSTNAME_PROD:-}"
-export CT_KEYCLOAK_HOSTNAME_PROD="${KEYCLOAK_HOSTNAME_PROD:-}"
-export CT_KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-}"
-export CT_KEYCLOAK_CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-}"
-export CT_NEXTAUTH_SECRET="${NEXTAUTH_SECRET:-}"
-export CT_DB_PASSWORD="${DB_PASSWORD:-}"
-export CT_DB_USER="${DB_USER:-}"
-export CT_DB_NAME="${DB_NAME:-}"
 
 bash "$DEPLOY_DIR/deploy.sh" "$ENV" "$FRONTEND_IMAGE" "$BACKEND_IMAGE" "$KEYCLOAK_IMAGE"
 

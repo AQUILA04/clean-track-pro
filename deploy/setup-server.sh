@@ -77,6 +77,15 @@ done
 # --- 4. Create .env files for test and prod stacks ---
 echo "[4/5] Creating .env files..."
 
+env_quote() {
+  local val="$1"
+  if [[ "$val" =~ ^[A-Za-z0-9._:/+-]+$ ]]; then
+    printf '%s' "$val"
+  else
+    printf "'%s'" "${val//\'/\'\\\'\'}"
+  fi
+}
+
 # Resolve values: use CT_ vars if set, otherwise use placeholders
 _db_user="${CT_DB_USER:-cleantrack}"
 _db_pass_test="${CT_DB_PASSWORD:-CHANGE_ME_test_db_password}"
@@ -98,6 +107,14 @@ _mail_user="${CT_MAIL_USER:-resend}"
 _mail_pass="${CT_MAIL_PASS:-CHANGE_ME_resend_api_key}"
 _mail_from="${CT_MAIL_FROM:-CleanTrackPro <noreply@optimizesolux.com>}"
 
+_db_pass_test_q="$(env_quote "$_db_pass_test")"
+_db_pass_prod_q="$(env_quote "$_db_pass_prod")"
+_kc_admin_pass_q="$(env_quote "$_kc_admin_pass")"
+_kc_client_secret_q="$(env_quote "$_kc_client_secret")"
+_nextauth_secret_q="$(env_quote "$_nextauth_secret")"
+_mail_pass_q="$(env_quote "$_mail_pass")"
+_mail_from_q="$(env_quote "$_mail_from")"
+
 TEST_ENV="/opt/cleantrack/test/.env"
 if [[ ! -f "$TEST_ENV" ]]; then
   cat > "$TEST_ENV" << EOF
@@ -105,15 +122,15 @@ if [[ ! -f "$TEST_ENV" ]]; then
 # CleanTrack Pro TEST stack — /opt/cleantrack/test/.env
 # =============================================================================
 DB_USER=${_db_user}
-DB_PASSWORD=${_db_pass_test}
+DB_PASSWORD=${_db_pass_test_q}
 DB_NAME=${_db_name_test}
 
 KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=${_kc_admin_pass}
+KEYCLOAK_ADMIN_PASSWORD=${_kc_admin_pass_q}
 KEYCLOAK_HOSTNAME=${_kc_host_test}
 KEYCLOAK_REALM=cleantrack
 KEYCLOAK_CLIENT_ID=cleantrack-client
-KEYCLOAK_CLIENT_SECRET=${_kc_client_secret}
+KEYCLOAK_CLIENT_SECRET=${_kc_client_secret_q}
 KEYCLOAK_AUTH_SERVER_URL=https://${_kc_host_test}
 KEYCLOAK_ISSUER=https://${_kc_host_test}/realms/cleantrack
 
@@ -122,7 +139,7 @@ MAILDEV_HOSTNAME=${_maildev_host}
 
 NEXT_PUBLIC_API_URL=https://${_app_host_test}/api
 NEXTAUTH_URL=https://${_app_host_test}
-NEXTAUTH_SECRET=${_nextauth_secret}
+NEXTAUTH_SECRET=${_nextauth_secret_q}
 
 # Populated automatically by deploy.sh — do not edit manually
 FRONTEND_IMAGE=
@@ -142,15 +159,15 @@ if [[ ! -f "$PROD_ENV" ]]; then
 # CleanTrack Pro PROD stack — /opt/cleantrack/prod/.env
 # =============================================================================
 DB_USER=${_db_user}
-DB_PASSWORD=${_db_pass_prod}
+DB_PASSWORD=${_db_pass_prod_q}
 DB_NAME=${_db_name_prod}
 
 KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=${_kc_admin_pass}
+KEYCLOAK_ADMIN_PASSWORD=${_kc_admin_pass_q}
 KEYCLOAK_HOSTNAME=${_kc_host_prod}
 KEYCLOAK_REALM=cleantrack
 KEYCLOAK_CLIENT_ID=cleantrack-client
-KEYCLOAK_CLIENT_SECRET=${_kc_client_secret}
+KEYCLOAK_CLIENT_SECRET=${_kc_client_secret_q}
 KEYCLOAK_AUTH_SERVER_URL=https://${_kc_host_prod}
 KEYCLOAK_ISSUER=https://${_kc_host_prod}/realms/cleantrack
 
@@ -160,13 +177,13 @@ CORS_ORIGINS=https://${_app_host_prod}
 
 NEXT_PUBLIC_API_URL=https://${_api_host_prod}
 NEXTAUTH_URL=https://${_app_host_prod}
-NEXTAUTH_SECRET=${_nextauth_secret}
+NEXTAUTH_SECRET=${_nextauth_secret_q}
 
 MAIL_HOST=${_mail_host}
 MAIL_PORT=${_mail_port}
 MAIL_USER=${_mail_user}
-MAIL_PASS=${_mail_pass}
-MAIL_FROM="${_mail_from}"
+MAIL_PASS=${_mail_pass_q}
+MAIL_FROM=${_mail_from_q}
 
 KEYCLOAK_THEMES_PATH=/opt/cleantrack/repo/keycloak/themes/cleantrack-pro
 
