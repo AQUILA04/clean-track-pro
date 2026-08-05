@@ -36,11 +36,19 @@ Server Layout
 
 | File | Description |
 |---|---|
-| `deploy.sh` | Main deployment script. Pulls images and runs `docker compose up -d`. |
+| `deploy.sh` | Main deployment script. Pulls images and runs `docker compose up -d`. Ensures `.env` keys are complete. |
 | `rollback.sh` | Rollback to a previous release by re-deploying its images. |
-| `setup-server.sh` | One-time server setup: creates directories, Docker networks, Traefik, and `.env` templates. |
-| `docker-compose.prod.yml` | Docker Compose stack for the PROD environment. |
+| `init.sh` | CD entrypoint: syncs `deploy/` from GitHub, optional first-time setup, then deploy. |
+| `setup-server.sh` | One-time server setup: directories, Docker networks, Traefik fallback, `.env` templates. |
+| `update-deploy.sh` | Atomically replaces `/opt/cleantrack/deploy` from GitHub (repo = source of truth). |
+| `docker-compose.prod.yml` | Docker Compose stack for the PROD environment (Resend MAIL_* wired). |
 | `docker-compose.test.yml` | Docker Compose stack for the TEST environment (includes MailDev). |
+| `.env.prod.example` | Documented prod `.env` template (no real secrets). |
+| `GITHUB-SECRETS-CONTABO.md` | Checklist DNS + GitHub Actions secrets (incl. Resend). |
+
+### Source of truth
+
+Do **not** hand-edit compose/scripts on the VPS. Every `init.sh` run refreshes `/opt/cleantrack/deploy/` from GitHub. Only `/opt/cleantrack/<env>/.env` is server-local (secrets).
 
 ---
 

@@ -1,8 +1,58 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { canAccessPath } from '@/lib/route-access';
 
-export default withAuth(
+const PROTECTED_PREFIXES = [
+    '/dashboard',
+    '/agencies',
+    '/catalogue',
+    '/users',
+    '/orders',
+    '/workflow',
+    '/storage',
+    '/clients',
+    '/cash-register',
+    '/expenses',
+    '/finance',
+    '/reports',
+    '/settings',
+    '/admin',
+] as const;
+
+function isProtectedPath(pathname: string): boolean {
+    return PROTECTED_PREFIXES.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+}
+
+/** Keycloak OAuth errors on the callback URL → friendly sign-in page (no raw callback URL). */
+function redirectOAuthCallbackError(req: NextRequest): NextResponse | null {
+    const { pathname, searchParams } = req.nextUrl;
+    if (!pathname.startsWith('/api/auth/callback/')) {
+        return null;
+    }
+    const oauthError = searchParams.get('error');
+    if (!oauthError) {
+        return null;
+    }
+
+    const url = req.nextUrl.clone();
+    url.pathname = '/auth/signin';
+    url.search = '';
+    url.searchParams.set('error', oauthError);
+    const description = searchParams.get('error_description');
+    if (description) {
+        url.searchParams.set('error_description', description);
+    }
+    const callbackUrl = searchParams.get('callbackUrl');
+    if (callbackUrl) {
+        url.searchParams.set('callbackUrl', callbackUrl);
+    }
+    return NextResponse.redirect(url);
+}
+
+const authMiddleware = withAuth(
     function middleware(req) {
         const roles = (req.nextauth.token?.roles as string[] | undefined) ?? [];
         const role = req.nextauth.token?.role as string | undefined;
@@ -25,8 +75,22 @@ export default withAuth(
     },
 );
 
+export default function middleware(req: NextRequest) {
+    const oauthRedirect = redirectOAuthCallbackError(req);
+    if (oauthRedirect) {
+        return oauthRedirect;
+    }
+
+    if (isProtectedPath(req.nextUrl.pathname)) {
+        return authMiddleware(req);
+    }
+
+    return NextResponse.next();
+}
+
 export const config = {
     matcher: [
+        '/api/auth/callback/:path*',
         '/dashboard',
         '/dashboard/:path*',
         '/agencies',

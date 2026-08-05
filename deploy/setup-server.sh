@@ -13,9 +13,10 @@
 #   CT_DB_USER, CT_DB_PASSWORD, CT_DB_NAME_TEST, CT_DB_NAME_PROD
 #   CT_KEYCLOAK_ADMIN_PASSWORD, CT_KEYCLOAK_CLIENT_SECRET
 #   CT_NEXTAUTH_SECRET
-#   CT_APP_HOSTNAME_TEST, CT_APP_HOSTNAME_PROD
+#   CT_APP_HOSTNAME_TEST, CT_APP_HOSTNAME_PROD, CT_API_HOSTNAME_PROD
 #   CT_KEYCLOAK_HOSTNAME_TEST, CT_KEYCLOAK_HOSTNAME_PROD
 #   CT_MAILDEV_HOSTNAME
+#   CT_MAIL_HOST, CT_MAIL_PORT, CT_MAIL_USER, CT_MAIL_PASS, CT_MAIL_FROM
 # =============================================================================
 set -euo pipefail
 
@@ -47,13 +48,22 @@ echo "[2/5] Creating directory structure..."
 mkdir -p /opt/cleantrack/traefik
 mkdir -p /opt/cleantrack/test/releases
 mkdir -p /opt/cleantrack/prod/releases
+mkdir -p /opt/cleantrack/deploy
 
-# acme.json must exist and be chmod 600 for Traefik
+# Copy deploy scripts from this checkout if we are not already under /opt/cleantrack/deploy
+if [[ "$DEPLOY_DIR" != "/opt/cleantrack/deploy" ]]; then
+  cp -a "$DEPLOY_DIR"/. /opt/cleantrack/deploy/
+  chmod +x /opt/cleantrack/deploy/*.sh 2>/dev/null || true
+fi
+
+# acme.json must exist and be chmod 600 for Traefik (local fallback only)
 touch /opt/cleantrack/traefik/acme.json
 chmod 600 /opt/cleantrack/traefik/acme.json
 echo "      Directories created."
 
 # --- 3. Create shared Docker networks ---
+# Internal nets are external:true in compose (created here once).
+# traefik-public is shared with OptimizeSolux Shared Traefik.
 echo "[3/5] Creating shared Docker networks..."
 for net in traefik-public cleantrack-test-internal cleantrack-prod-internal; do
   if docker network inspect "$net" > /dev/null 2>&1; then
@@ -82,6 +92,11 @@ _api_host_prod="${CT_API_HOSTNAME_PROD:-cleantrack-api.optimizesolux.com}"
 _kc_host_test="${CT_KEYCLOAK_HOSTNAME_TEST:-keycloak.test.cleantrack.optimizesolux.com}"
 _kc_host_prod="${CT_KEYCLOAK_HOSTNAME_PROD:-cleantrack-auth.optimizesolux.com}"
 _maildev_host="${CT_MAILDEV_HOSTNAME:-maildev.test.cleantrack.optimizesolux.com}"
+_mail_host="${CT_MAIL_HOST:-smtp.resend.com}"
+_mail_port="${CT_MAIL_PORT:-465}"
+_mail_user="${CT_MAIL_USER:-resend}"
+_mail_pass="${CT_MAIL_PASS:-CHANGE_ME_resend_api_key}"
+_mail_from="${CT_MAIL_FROM:-CleanTrackPro <noreply@optimizesolux.com>}"
 
 TEST_ENV="/opt/cleantrack/test/.env"
 if [[ ! -f "$TEST_ENV" ]]; then
@@ -146,6 +161,14 @@ CORS_ORIGINS=https://${_app_host_prod}
 NEXT_PUBLIC_API_URL=https://${_api_host_prod}
 NEXTAUTH_URL=https://${_app_host_prod}
 NEXTAUTH_SECRET=${_nextauth_secret}
+
+MAIL_HOST=${_mail_host}
+MAIL_PORT=${_mail_port}
+MAIL_USER=${_mail_user}
+MAIL_PASS=${_mail_pass}
+MAIL_FROM="${_mail_from}"
+
+KEYCLOAK_THEMES_PATH=/opt/cleantrack/repo/keycloak/themes/cleantrack-pro
 
 # Populated automatically by deploy.sh — do not edit manually
 FRONTEND_IMAGE=

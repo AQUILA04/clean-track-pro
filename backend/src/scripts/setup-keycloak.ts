@@ -7,6 +7,90 @@ const REALM_NAME = process.env.KEYCLOAK_REALM || 'cleantrack';
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || 'cleantrack-client';
 const CLEANTRACK_THEME = 'cleantrack-pro';
 
+function resolveSmtpConfig() {
+    const host = process.env.KEYCLOAK_SMTP_HOST || process.env.MAIL_HOST || '';
+    const port =
+        process.env.KEYCLOAK_SMTP_PORT ||
+        process.env.MAIL_PORT ||
+        (host.includes('resend') ? '465' : '1025');
+    const user = process.env.KEYCLOAK_SMTP_USER || process.env.MAIL_USER || '';
+    const password = process.env.KEYCLOAK_SMTP_PASSWORD || process.env.MAIL_PASS || '';
+
+    let from = process.env.KEYCLOAK_SMTP_FROM || '';
+    let fromDisplayName = process.env.KEYCLOAK_SMTP_FROM_DISPLAY_NAME || 'CleanTrackPro';
+    const mailFrom = process.env.MAIL_FROM || '';
+    if (!from && mailFrom) {
+        const match = mailFrom.match(/^(?:"?([^"<]*)"?\s*)?<?([^>]+@[^>]+)>?$/);
+        if (match) {
+            if (match[1]?.trim()) fromDisplayName = match[1].trim();
+            from = match[2].trim();
+        } else {
+            from = mailFrom;
+        }
+    }
+    if (!from) from = 'noreply@optimizesolux.com';
+
+    const replyTo = process.env.KEYCLOAK_SMTP_REPLY_TO || from;
+    const replyToDisplayName =
+        process.env.KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME || fromDisplayName;
+
+    const useSsl =
+        (process.env.KEYCLOAK_SMTP_SSL || (port === '465' ? 'true' : 'false')).toLowerCase() ===
+        'true';
+    const useStartTls =
+        (
+            process.env.KEYCLOAK_SMTP_STARTTLS || (port === '587' ? 'true' : 'false')
+        ).toLowerCase() === 'true';
+    const useAuth =
+        (process.env.KEYCLOAK_SMTP_AUTH || (user && password ? 'true' : 'false')).toLowerCase() ===
+        'true';
+
+    return {
+        host,
+        port,
+        user,
+        password,
+        from,
+        fromDisplayName,
+        replyTo,
+        replyToDisplayName,
+        useSsl,
+        useStartTls,
+        useAuth,
+    };
+}
+
+/** Public frontend origin used for OIDC redirect URIs (prod or local). */
+function resolveFrontendOrigins(): string[] {
+    const fromEnv = [
+        process.env.NEXTAUTH_URL,
+        process.env.APP_HOSTNAME ? `https://${process.env.APP_HOSTNAME.replace(/^https?:\/\//, '')}` : '',
+        process.env.FRONTEND_URL,
+    ]
+        .filter(Boolean)
+        .map((u) => String(u).replace(/\/$/, ''));
+
+    const defaults = ['http://localhost:3001', 'http://localhost:3000'];
+    return Array.from(new Set([...fromEnv, ...defaults]));
+}
+
+function buildClientRedirectConfig(origins: string[]) {
+    const primary = origins[0];
+    const redirectUris = origins.flatMap((origin) => [
+        `${origin}/*`,
+        `${origin}/auth/signin`,
+        `${origin}/api/auth/callback/keycloak`,
+    ]);
+    const postLogout = origins.flatMap((origin) => [`${origin}/`, `${origin}/*`]);
+    return {
+        rootUrl: primary,
+        baseUrl: `${primary}/auth/signin`,
+        redirectUris,
+        webOrigins: origins,
+        postLogoutRedirectUris: postLogout.join('##'),
+    };
+}
+
 const requiredEnvVars = [
     { name: 'KEYCLOAK_URL', val: KEYCLOAK_URL },
     { name: 'KEYCLOAK_ADMIN', val: KEYCLOAK_ADMIN },
@@ -81,6 +165,40 @@ async function setupKeycloak() {
         );
         console.log(`✅ Theme '${CLEANTRACK_THEME}' applied to realm '${REALM_NAME}'`);
 
+        const smtp = resolveSmtpConfig();
+        if (smtp.host && smtp.from) {
+            await kcAdminClient.realms.update(
+                { realm: REALM_NAME },
+                {
+                    smtpServer: {
+                        host: smtp.host,
+                        port: smtp.port,
+                        from: smtp.from,
+                        fromDisplayName: smtp.fromDisplayName,
+                        replyTo: smtp.replyTo,
+                        replyToDisplayName: smtp.replyToDisplayName,
+                        ssl: smtp.useSsl ? 'true' : 'false',
+                        starttls: smtp.useStartTls ? 'true' : 'false',
+                        auth: smtp.useAuth ? 'true' : 'false',
+                        ...(smtp.useAuth
+                            ? { user: smtp.user, password: smtp.password }
+                            : {}),
+                    },
+                },
+            );
+            console.log(
+                `✅ SMTP configured (${smtp.host}:${smtp.port}, from ${smtp.from}, auth=${smtp.useAuth})`,
+            );
+        } else {
+            console.log(
+                'ℹ️  SMTP not configured (set KEYCLOAK_SMTP_HOST/MAIL_HOST and KEYCLOAK_SMTP_FROM/MAIL_FROM)',
+            );
+        }
+
+        const frontendOrigins = resolveFrontendOrigins();
+        const redirectConfig = buildClientRedirectConfig(frontendOrigins);
+        console.log(`ℹ️  Frontend origins for OIDC: ${frontendOrigins.join(', ')}`);
+
         // Create client
         const clients = await kcAdminClient.clients.find({ clientId: CLIENT_ID });
         let clientUuid: string;
@@ -96,25 +214,13 @@ async function setupKeycloak() {
                 standardFlowEnabled: true,
                 directAccessGrantsEnabled: true,
                 serviceAccountsEnabled: true,
-                redirectUris: [
-                    'http://localhost:3000/*',
-                    'http://localhost:3000/auth/signin',
-                    'http://localhost:3000/api/auth/callback/keycloak',
-                    'http://localhost:3001/*',
-                    'http://localhost:3001/auth/signin',
-                    'http://localhost:3001/api/auth/callback/keycloak',
-                ],
-                webOrigins: ['http://localhost:3000', 'http://localhost:3001'],
+                redirectUris: redirectConfig.redirectUris,
+                webOrigins: redirectConfig.webOrigins,
                 protocol: 'openid-connect',
-                rootUrl: 'http://localhost:3001',
-                baseUrl: 'http://localhost:3001/auth/signin',
+                rootUrl: redirectConfig.rootUrl,
+                baseUrl: redirectConfig.baseUrl,
                 attributes: {
-                    'post.logout.redirect.uris': [
-                        'http://localhost:3000/',
-                        'http://localhost:3000/*',
-                        'http://localhost:3001/',
-                        'http://localhost:3001/*',
-                    ].join('##'),
+                    'post.logout.redirect.uris': redirectConfig.postLogoutRedirectUris,
                 },
             });
             clientUuid = client.id;
@@ -126,34 +232,21 @@ async function setupKeycloak() {
             { id: clientUuid },
             {
                 ...existingClient,
-                rootUrl: 'http://localhost:3001',
-                baseUrl: 'http://localhost:3001/auth/signin',
+                rootUrl: redirectConfig.rootUrl,
+                baseUrl: redirectConfig.baseUrl,
                 redirectUris: Array.from(
-                    new Set([
-                        ...(existingClient?.redirectUris ?? []),
-                        'http://localhost:3000/*',
-                        'http://localhost:3000/auth/signin',
-                        'http://localhost:3000/api/auth/callback/keycloak',
-                        'http://localhost:3001/*',
-                        'http://localhost:3001/auth/signin',
-                        'http://localhost:3001/api/auth/callback/keycloak',
-                    ]),
+                    new Set([...(existingClient?.redirectUris ?? []), ...redirectConfig.redirectUris]),
                 ),
                 webOrigins: Array.from(
-                    new Set([...(existingClient?.webOrigins ?? []), 'http://localhost:3000', 'http://localhost:3001']),
+                    new Set([...(existingClient?.webOrigins ?? []), ...redirectConfig.webOrigins]),
                 ),
                 attributes: {
                     ...(existingClient?.attributes ?? {}),
-                    'post.logout.redirect.uris': [
-                        'http://localhost:3000/',
-                        'http://localhost:3000/*',
-                        'http://localhost:3001/',
-                        'http://localhost:3001/*',
-                    ].join('##'),
+                    'post.logout.redirect.uris': redirectConfig.postLogoutRedirectUris,
                 },
             },
         );
-        console.log(`✅ Post-logout redirect URIs configured for client '${CLIENT_ID}'`);
+        console.log(`✅ Redirect / post-logout URIs configured for client '${CLIENT_ID}'`);
 
         // Create protocol mappers for tenant_id and site_ids
         const mappers = await kcAdminClient.clients.listProtocolMappers({

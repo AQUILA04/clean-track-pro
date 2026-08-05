@@ -5,33 +5,22 @@
 # Ce script est le point d'entrée unique pour un nouveau serveur.
 # Il est téléchargé par le CD via curl si absent, puis exécuté.
 #
+# Source de vérité : le dépôt GitHub (dossier deploy/).
+# À chaque exécution, les scripts sous /opt/cleantrack/deploy/ sont resynchronisés
+# depuis GitHub — aucune config manuelle sur le serveur ne doit survivre hors .env.
+#
 # Comportement :
-#   - Si /opt/cleantrack/ n'existe PAS → setup complet du serveur, puis déploiement
-#   - Si /opt/cleantrack/ existe déjà  → déploiement direct (setup ignoré)
+#   - Sync deploy/ depuis GitHub (toujours)
+#   - Si première fois → setup-server.sh, puis déploiement
+#   - Sinon → déploiement direct
 #
 # Usage (appelé par le CD via SSH) :
-#   ./init.sh <env> <frontend_image> <backend_image> <keycloak_image> [--force-update | -fu] \
+#   ./init.sh <env> <frontend_image> <backend_image> <keycloak_image> \
 #     [--db-password <val>] \
-#     [--db-user <val>] \
-#     [--db-name <val>] \
-#     [--keycloak-admin-password <val>] \
-#     [--keycloak-client-secret <val>] \
-#     [--nextauth-secret <val>] \
-#     [--app-hostname <val>] \
-#     [--keycloak-hostname <val>] \
-#     [--ghcr-username <val>] \
-#     [--ghcr-token <val>]
-#
-# Usage manuel (bootstrap d'un nouveau serveur) :
-#   curl -sSL https://raw.githubusercontent.com/AQUILA04/clean-track-pro/main/deploy/init.sh -o /opt/cleantrack/init.sh
-#   chmod +x /opt/cleantrack/init.sh
-#   sudo /opt/cleantrack/init.sh prod \
-#       ghcr.io/aquila04/clean-track-pro-frontend:<sha> \
-#       ghcr.io/aquila04/clean-track-pro-backend:<sha> \
-#       ghcr.io/aquila04/clean-track-pro-keycloak:<sha> \
-#       --db-password "..." \
-#       --keycloak-admin-password "..." \
-#       ...
+#     [--mail-pass <val>] \
+#     [--mail-from <val>] \
+#     [--api-hostname-prod <val>] \
+#     ...
 # =============================================================================
 set -euo pipefail
 
@@ -40,8 +29,10 @@ DEPLOY_DIR="/opt/cleantrack/deploy"
 GITHUB_RAW="https://raw.githubusercontent.com/AQUILA04/clean-track-pro/main/deploy"
 
 # ---------------------------------------------------------------------------
-# Parse arguments
+# Parse arguments (saved for re-exec after sync)
 # ---------------------------------------------------------------------------
+ORIG_ARGS=("$@")
+
 ENV=""
 FRONTEND_IMAGE=""
 BACKEND_IMAGE=""
@@ -56,9 +47,15 @@ KEYCLOAK_CLIENT_SECRET=""
 NEXTAUTH_SECRET=""
 APP_HOSTNAME_TEST=""
 APP_HOSTNAME_PROD=""
+API_HOSTNAME_PROD=""
 KEYCLOAK_HOSTNAME_TEST=""
 KEYCLOAK_HOSTNAME_PROD=""
 MAILDEV_HOSTNAME=""
+MAIL_HOST=""
+MAIL_PORT=""
+MAIL_USER=""
+MAIL_PASS=""
+MAIL_FROM=""
 GHCR_USERNAME=""
 GHCR_TOKEN=""
 
@@ -90,9 +87,15 @@ while [[ "$#" -gt 0 ]]; do
         --nextauth-secret)            NEXTAUTH_SECRET="$2";            shift ;;
         --app-hostname-test)          APP_HOSTNAME_TEST="$2";          shift ;;
         --app-hostname-prod)          APP_HOSTNAME_PROD="$2";          shift ;;
+        --api-hostname-prod)          API_HOSTNAME_PROD="$2";          shift ;;
         --keycloak-hostname-test)     KEYCLOAK_HOSTNAME_TEST="$2";     shift ;;
         --keycloak-hostname-prod)     KEYCLOAK_HOSTNAME_PROD="$2";     shift ;;
         --maildev-hostname)           MAILDEV_HOSTNAME="$2";           shift ;;
+        --mail-host)                  MAIL_HOST="$2";                  shift ;;
+        --mail-port)                  MAIL_PORT="$2";                  shift ;;
+        --mail-user)                  MAIL_USER="$2";                  shift ;;
+        --mail-pass)                  MAIL_PASS="$2";                  shift ;;
+        --mail-from)                  MAIL_FROM="$2";                  shift ;;
         --ghcr-username)              GHCR_USERNAME="$2";              shift ;;
         --ghcr-token)                 GHCR_TOKEN="$2";                 shift ;;
         *) echo "Unknown parameter: $1" >&2; exit 1 ;;
@@ -107,37 +110,31 @@ if [[ -z "$ENV" || -z "$FRONTEND_IMAGE" || -z "$BACKEND_IMAGE" || -z "$KEYCLOAK_
 fi
 
 # ---------------------------------------------------------------------------
-# Step 1 — Ensure /opt/cleantrack/deploy/ is present and up-to-date
+# Step 0 — Always sync deploy/ from GitHub (repo = single source of truth)
 # ---------------------------------------------------------------------------
-if [[ "$FORCE_UPDATE" == "true" ]]; then
-    echo ">>> [init] --force-update: refreshing deploy scripts from GitHub..."
+# CT_INIT_SYNCED=1 prevents infinite re-exec after update-deploy swaps scripts.
+if [[ "${CT_INIT_SYNCED:-}" != "1" ]]; then
+    echo ">>> [init] Syncing /opt/cleantrack/deploy from GitHub (repo is source of truth)..."
+    mkdir -p /opt/cleantrack
     bash <(curl -sSL "$GITHUB_RAW/update-deploy.sh")
-    echo ">>> [init] Re-executing updated init.sh..."
-    exec "$DEPLOY_DIR/init.sh" "$ENV" "$FRONTEND_IMAGE" "$BACKEND_IMAGE" "$KEYCLOAK_IMAGE" \
-        ${DB_USER:+--db-user "$DB_USER"} \
-        ${DB_PASSWORD:+--db-password "$DB_PASSWORD"} \
-        ${DB_NAME:+--db-name "$DB_NAME"} \
-        ${KEYCLOAK_ADMIN_PASSWORD:+--keycloak-admin-password "$KEYCLOAK_ADMIN_PASSWORD"} \
-        ${KEYCLOAK_CLIENT_SECRET:+--keycloak-client-secret "$KEYCLOAK_CLIENT_SECRET"} \
-        ${NEXTAUTH_SECRET:+--nextauth-secret "$NEXTAUTH_SECRET"} \
-        ${APP_HOSTNAME_TEST:+--app-hostname-test "$APP_HOSTNAME_TEST"} \
-        ${APP_HOSTNAME_PROD:+--app-hostname-prod "$APP_HOSTNAME_PROD"} \
-        ${KEYCLOAK_HOSTNAME_TEST:+--keycloak-hostname-test "$KEYCLOAK_HOSTNAME_TEST"} \
-        ${KEYCLOAK_HOSTNAME_PROD:+--keycloak-hostname-prod "$KEYCLOAK_HOSTNAME_PROD"} \
-        ${MAILDEV_HOSTNAME:+--maildev-hostname "$MAILDEV_HOSTNAME"} \
-        ${GHCR_USERNAME:+--ghcr-username "$GHCR_USERNAME"} \
-        ${GHCR_TOKEN:+--ghcr-token "$GHCR_TOKEN"}
+
+    # Keep the bootstrap copy of init.sh in sync too
+    curl -sSL "$GITHUB_RAW/init.sh" -o /opt/cleantrack/init.sh
+    chmod +x /opt/cleantrack/init.sh
+
+    export CT_INIT_SYNCED=1
+    echo ">>> [init] Re-executing synced init.sh from $DEPLOY_DIR..."
+    exec "$DEPLOY_DIR/init.sh" "${ORIG_ARGS[@]}"
+fi
+
+# Optional explicit force-update (already synced above; kept for compatibility)
+if [[ "$FORCE_UPDATE" == "true" ]]; then
+    echo ">>> [init] --force-update acknowledged (deploy/ already synced)."
 fi
 
 if [[ ! -d "$DEPLOY_DIR" ]]; then
-    echo ">>> [init] /opt/cleantrack/deploy not found. Fetching deploy scripts from GitHub..."
-    mkdir -p /opt/cleantrack
-    rm -rf /tmp/cleantrack_src
-    git clone https://github.com/AQUILA04/clean-track-pro.git /tmp/cleantrack_src
-    cp -r /tmp/cleantrack_src/deploy "$DEPLOY_DIR"
-    rm -rf /tmp/cleantrack_src
-    chmod +x "$DEPLOY_DIR"/*.sh
-    echo ">>> [init] Deploy scripts installed in $DEPLOY_DIR"
+    echo "Error: $DEPLOY_DIR missing after sync." >&2
+    exit 1
 fi
 
 # ---------------------------------------------------------------------------
@@ -156,11 +153,17 @@ if [[ ! -f "$SETUP_MARKER" ]]; then
     export CT_KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-}"
     export CT_KEYCLOAK_CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-}"
     export CT_NEXTAUTH_SECRET="${NEXTAUTH_SECRET:-}"
-    export CT_APP_HOSTNAME_TEST="${APP_HOSTNAME_TEST:-test.cleantrack.local}"
-    export CT_APP_HOSTNAME_PROD="${APP_HOSTNAME_PROD:-cleantrack.local}"
-    export CT_KEYCLOAK_HOSTNAME_TEST="${KEYCLOAK_HOSTNAME_TEST:-keycloak.test.cleantrack.local}"
-    export CT_KEYCLOAK_HOSTNAME_PROD="${KEYCLOAK_HOSTNAME_PROD:-keycloak.cleantrack.local}"
-    export CT_MAILDEV_HOSTNAME="${MAILDEV_HOSTNAME:-maildev.test.cleantrack.local}"
+    export CT_APP_HOSTNAME_TEST="${APP_HOSTNAME_TEST:-test.cleantrack.optimizesolux.com}"
+    export CT_APP_HOSTNAME_PROD="${APP_HOSTNAME_PROD:-cleantrack.optimizesolux.com}"
+    export CT_API_HOSTNAME_PROD="${API_HOSTNAME_PROD:-cleantrack-api.optimizesolux.com}"
+    export CT_KEYCLOAK_HOSTNAME_TEST="${KEYCLOAK_HOSTNAME_TEST:-keycloak.test.cleantrack.optimizesolux.com}"
+    export CT_KEYCLOAK_HOSTNAME_PROD="${KEYCLOAK_HOSTNAME_PROD:-cleantrack-auth.optimizesolux.com}"
+    export CT_MAILDEV_HOSTNAME="${MAILDEV_HOSTNAME:-maildev.test.cleantrack.optimizesolux.com}"
+    export CT_MAIL_HOST="${MAIL_HOST:-smtp.resend.com}"
+    export CT_MAIL_PORT="${MAIL_PORT:-465}"
+    export CT_MAIL_USER="${MAIL_USER:-resend}"
+    export CT_MAIL_PASS="${MAIL_PASS:-}"
+    export CT_MAIL_FROM="${MAIL_FROM:-CleanTrackPro <noreply@optimizesolux.com>}"
 
     bash "$DEPLOY_DIR/setup-server.sh"
 
@@ -171,11 +174,25 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 3 — Deploy
+# Step 3 — Deploy (pass mail/API overrides so existing .env stays complete)
 # ---------------------------------------------------------------------------
 echo ">>> [init] Launching deployment: env=$ENV"
 export GHCR_USERNAME="${GHCR_USERNAME:-}"
 export GHCR_TOKEN="${GHCR_TOKEN:-}"
+export CT_API_HOSTNAME_PROD="${API_HOSTNAME_PROD:-}"
+export CT_MAIL_HOST="${MAIL_HOST:-}"
+export CT_MAIL_PORT="${MAIL_PORT:-}"
+export CT_MAIL_USER="${MAIL_USER:-}"
+export CT_MAIL_PASS="${MAIL_PASS:-}"
+export CT_MAIL_FROM="${MAIL_FROM:-}"
+export CT_APP_HOSTNAME_PROD="${APP_HOSTNAME_PROD:-}"
+export CT_KEYCLOAK_HOSTNAME_PROD="${KEYCLOAK_HOSTNAME_PROD:-}"
+export CT_KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-}"
+export CT_KEYCLOAK_CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-}"
+export CT_NEXTAUTH_SECRET="${NEXTAUTH_SECRET:-}"
+export CT_DB_PASSWORD="${DB_PASSWORD:-}"
+export CT_DB_USER="${DB_USER:-}"
+export CT_DB_NAME="${DB_NAME:-}"
 
 bash "$DEPLOY_DIR/deploy.sh" "$ENV" "$FRONTEND_IMAGE" "$BACKEND_IMAGE" "$KEYCLOAK_IMAGE"
 

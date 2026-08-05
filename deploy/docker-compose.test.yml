@@ -59,6 +59,8 @@ services:
       KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-keycloak.test.cleantrack.local}
       KC_PROXY_HEADERS: xforwarded
       KC_HTTP_ENABLED: "true"
+    volumes:
+      - ${KEYCLOAK_THEMES_PATH:-/opt/cleantrack/repo/keycloak/themes/cleantrack-pro}:/opt/keycloak/themes/cleantrack-pro:ro
     command: start --optimized --import-realm
     networks:
       - internal
@@ -138,7 +140,9 @@ volumes:
   postgres_test_data:
 
 networks:
+  # Created once by setup-server.sh — avoids compose/setup ownership conflicts
   internal:
     name: cleantrack-test-internal
+    external: true
   traefik-public:
     external: true

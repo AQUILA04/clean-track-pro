@@ -21,6 +21,10 @@ docker build --build-context certs=/opt/cleantrack/repo/cert \
   --build-arg "KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER}" \
   -t cleantrack-frontend:prod .
 
+echo "=== Building keycloak (custom themes) ==="
+cd /opt/cleantrack/repo/keycloak
+docker build --build-context certs=/opt/cleantrack/repo/cert -t cleantrack-keycloak:prod .
+
 echo "=== Updating .env image tags ==="
 set_env_var() {
   local key="$1"
@@ -38,10 +42,19 @@ set_env_var() {
 }
 set_env_var FRONTEND_IMAGE cleantrack-frontend:prod
 set_env_var BACKEND_IMAGE cleantrack-backend:prod
+set_env_var KEYCLOAK_IMAGE cleantrack-keycloak:prod
+set_env_var KEYCLOAK_THEMES_PATH /opt/cleantrack/repo/keycloak/themes/cleantrack-pro
 
 echo "=== Starting stack ==="
+# Networks are external in compose — create if missing (same as setup-server.sh)
 docker network inspect cleantrack-prod-internal >/dev/null 2>&1 || docker network create cleantrack-prod-internal
-docker network inspect traefik-public >/dev/null
+docker network inspect traefik-public >/dev/null 2>&1 || docker network create traefik-public
+
+# Prefer scripts from the repo checkout when available (source of truth before push/CD)
+if [[ -d /opt/cleantrack/repo/deploy ]]; then
+  cp -a /opt/cleantrack/repo/deploy/. /opt/cleantrack/deploy/
+  chmod +x /opt/cleantrack/deploy/*.sh 2>/dev/null || true
+fi
 
 cd /opt/cleantrack/deploy
 docker compose \

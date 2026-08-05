@@ -28,13 +28,29 @@ Réutilise la même clé SSH que SharedTraefik si possible.
 | `PROD_KEYCLOAK_CLIENT_SECRET` | secret UUID / fort |
 | `PROD_NEXTAUTH_SECRET` | `openssl rand -base64 32` |
 | `PROD_APP_HOSTNAME` | `cleantrack.optimizesolux.com` |
-| `PROD_KEYCLOAK_HOSTNAME` | `cleantrack-auth.optimizesolux.com` |
-
-Optionnel (recommandé) — à ajouter dans le CD plus tard :
-
-| Secret | Valeur |
-|--------|--------|
 | `PROD_API_HOSTNAME` | `cleantrack-api.optimizesolux.com` |
+| `PROD_KEYCLOAK_HOSTNAME` | `cleantrack-auth.optimizesolux.com` |
+| `PROD_MAIL_HOST` | `smtp.resend.com` |
+| `PROD_MAIL_PORT` | `465` |
+| `PROD_MAIL_USER` | `resend` |
+| `PROD_MAIL_PASS` | clé API Resend (`re_…`) |
+| `PROD_MAIL_FROM` | `CleanTrackPro <noreply@optimizesolux.com>` |
+
+### Resend SMTP pour Keycloak (Realm → Email)
+
+Ce n’est **pas** un compte email classique. Resend SMTP :
+
+| Champ Keycloak | Valeur |
+|----------------|--------|
+| Host | `smtp.resend.com` |
+| Port | `465` (SSL) ou `587` (STARTTLS) |
+| Encryption | SSL activé sur 465 |
+| Authentication | ON |
+| Username | `resend` |
+| Password | **la même clé API** Resend (`re_…`) que `MAIL_PASS` |
+| From | `noreply@optimizesolux.com` (domaine vérifié) |
+
+Le script `keycloak:setup` (et `apply-keycloak-theme-smtp.sh`) reprend automatiquement `MAIL_*` du `.env`.
 
 ## 3. Hosts runtime
 
@@ -44,9 +60,17 @@ Optionnel (recommandé) — à ajouter dans le CD plus tard :
 | https://cleantrack-api.optimizesolux.com | API NestJS |
 | https://cleantrack-auth.optimizesolux.com | Keycloak |
 
-## 4. Déploiement
+## 4. Source de vérité (zéro config serveur)
 
-1. Pousser les changements `deploy/docker-compose.prod.yml` + CORS sur `main` (ou branche `prod/**`)
-2. Laisser la CI publier les images GHCR
-3. Déclencher le CD prod (push `prod/**` ou promote)
-4. Ou premier deploy manuel via `init.sh` une fois les images disponibles
+- **Tout** le runtime Docker (compose, scripts) vit dans `deploy/` du dépôt.
+- À chaque `init.sh`, `/opt/cleantrack/deploy/` est **resynchronisé depuis GitHub** — pas de patch manuel durable sur le VPS.
+- Les secrets restent hors git dans `/opt/cleantrack/<env>/.env` (injectés par le CD / `setup-server.sh`).
+- Template documenté : `deploy/.env.prod.example`.
+
+## 5. Déploiement
+
+1. Pousser les changements `deploy/` + CD sur `main` (ou branche `prod/**`)
+2. Configurer les secrets GitHub ci-dessus (dont Resend)
+3. Laisser la CI publier les images GHCR
+4. Déclencher le CD prod (push `prod/**` ou promote)
+5. Ou premier deploy manuel via `init.sh` une fois les images disponibles

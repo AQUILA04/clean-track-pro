@@ -45,6 +45,10 @@ services:
       KC_PROXY_HEADERS: xforwarded
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
+    # Same theme as docker-compose.dev.yml (baked into custom KEYCLOAK_IMAGE, or mounted here).
+    # Mount only cleantrack-pro so Keycloak built-in themes (base/keycloak) stay intact.
+    volumes:
+      - ${KEYCLOAK_THEMES_PATH:-/opt/cleantrack/repo/keycloak/themes/cleantrack-pro}:/opt/keycloak/themes/cleantrack-pro:ro
     command: start
     networks:
       - internal
@@ -84,6 +88,21 @@ services:
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Used by keycloak:setup for OIDC redirect URIs (prod frontend origin)
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://cleantrack.optimizesolux.com}
+      APP_HOSTNAME: ${APP_HOSTNAME:-cleantrack.optimizesolux.com}
+      # Keycloak realm SMTP — setup-keycloak falls back to MAIL_* when KEYCLOAK_SMTP_* unset
+      KEYCLOAK_SMTP_HOST: ${KEYCLOAK_SMTP_HOST:-}
+      KEYCLOAK_SMTP_PORT: ${KEYCLOAK_SMTP_PORT:-}
+      KEYCLOAK_SMTP_USER: ${KEYCLOAK_SMTP_USER:-}
+      KEYCLOAK_SMTP_PASSWORD: ${KEYCLOAK_SMTP_PASSWORD:-}
+      KEYCLOAK_SMTP_FROM: ${KEYCLOAK_SMTP_FROM:-noreply@optimizesolux.com}
+      KEYCLOAK_SMTP_FROM_DISPLAY_NAME: ${KEYCLOAK_SMTP_FROM_DISPLAY_NAME:-CleanTrackPro}
+      MAIL_HOST: ${MAIL_HOST:-smtp.resend.com}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USER: ${MAIL_USER:-resend}
+      MAIL_PASS: ${MAIL_PASS}
+      MAIL_FROM: ${MAIL_FROM:-CleanTrackPro <noreply@optimizesolux.com>}
     networks:
       - internal
       - traefik-public
@@ -123,7 +142,9 @@ volumes:
   postgres_data:
 
 networks:
+  # Created once by setup-server.sh — avoids compose/setup ownership conflicts
   internal:
     name: cleantrack-prod-internal
+    external: true
   traefik-public:
     external: true

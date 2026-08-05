@@ -1,53 +1,59 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { AuthErrorPanel } from '@/components/auth/AuthErrorPanel';
+import {
+    resolveAuthErrorMessage,
+    shouldBlockAuthRedirect,
+} from '@/lib/auth-errors';
 import { TENANT_DEACTIVATED_MESSAGE } from '@/lib/tenant-access';
 
 function SignInRedirect() {
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
     const error = searchParams.get('error');
-    const [flash, setFlash] = useState<string | null>(null);
-
-    useEffect(() => {
+    const errorDescription = searchParams.get('error_description');
+    const [flash, setFlash] = useState<string | null>(() => {
+        if (typeof window === 'undefined') {
+            return null;
+        }
         const stored = sessionStorage.getItem('auth_flash');
         if (stored) {
             sessionStorage.removeItem('auth_flash');
-            setFlash(stored);
-            return;
+            return stored;
         }
+        return null;
+    });
+
+    const resolvedErrorMessage = useMemo(() => {
         if (error === 'TenantDeactivated') {
-            setFlash(TENANT_DEACTIVATED_MESSAGE);
+            return TENANT_DEACTIVATED_MESSAGE;
         }
-    }, [error]);
+        return resolveAuthErrorMessage(error, errorDescription) ?? flash;
+    }, [error, errorDescription, flash]);
 
     useEffect(() => {
-        if (error === 'TenantDeactivated' || flash) {
+        if (shouldBlockAuthRedirect(error, resolvedErrorMessage)) {
             return;
         }
         void signIn('keycloak', { callbackUrl });
-    }, [callbackUrl, error, flash]);
+    }, [callbackUrl, error, resolvedErrorMessage]);
 
-    if (error === 'TenantDeactivated' || flash) {
+    const handleRetry = () => {
+        setFlash(null);
+        void signIn('keycloak', { callbackUrl });
+    };
+
+    if (resolvedErrorMessage) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-4">
-                <p className="max-w-md text-center text-sm text-red-600">
-                    {flash || TENANT_DEACTIVATED_MESSAGE}
-                </p>
-                <button
-                    type="button"
-                    className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white"
-                    onClick={() => {
-                        setFlash(null);
-                        void signIn('keycloak', { callbackUrl: '/dashboard' });
-                    }}
-                >
-                    Réessayer
-                </button>
-            </div>
+            <AuthErrorPanel
+                message={resolvedErrorMessage}
+                onRetry={handleRetry}
+                callbackUrl={callbackUrl}
+            />
         );
     }
 
