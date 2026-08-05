@@ -1,8 +1,8 @@
 import axios from 'axios';
+import { getPublicApiUrl } from '@/lib/public-env';
 import { getSession } from 'next-auth/react';
 import { CreateOrderDto } from '@/types/create-order.dto'; // I might need to create this type definition on frontend too
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -15,7 +15,7 @@ const getAuthHeaders = async () => {
 export const OrdersService = {
     async create(data: CreateOrderDto) {
         const headers = await getAuthHeaders();
-        const response = await axios.post(`${API_URL}/orders`, data, {
+        const response = await axios.post(`${getPublicApiUrl()}/orders`, data, {
             headers,
             withCredentials: true,
         });
@@ -24,7 +24,7 @@ export const OrdersService = {
 
     async getById(id: string) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/${id}`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/${id}`, {
             headers,
             withCredentials: true,
         });
@@ -40,7 +40,7 @@ export const OrdersService = {
         options?: { statuses?: string[]; siteId?: string },
     ): Promise<{ count: number; orders: any[] }> {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/lookup`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/lookup`, {
             headers,
             params: {
                 q,
@@ -54,7 +54,7 @@ export const OrdersService = {
 
     async updateStatus(id: string, status: string) {
         const headers = await getAuthHeaders();
-        const response = await axios.patch(`${API_URL}/orders/${id}/status`, { status }, {
+        const response = await axios.patch(`${getPublicApiUrl()}/orders/${id}/status`, { status }, {
             headers,
             withCredentials: true,
         });
@@ -63,7 +63,7 @@ export const OrdersService = {
 
     async getDashboardStats(startDate?: string, endDate?: string, timezone?: string, siteId?: string, serviceId?: string) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/stats/dashboard`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/stats/dashboard`, {
             headers,
             params: { startDate, endDate, timezone, siteId, serviceId },
             withCredentials: true,
@@ -79,7 +79,7 @@ export const OrdersService = {
         options?: { status?: 'all' | 'ready' | 'processing' | 'late'; q?: string },
     ) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders`, {
             params: {
                 page,
                 limit,
@@ -96,7 +96,7 @@ export const OrdersService = {
 
     async getWeeklyStats(siteId?: string) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/stats/weekly`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/stats/weekly`, {
             headers,
             params: { siteId },
             withCredentials: true,
@@ -106,7 +106,7 @@ export const OrdersService = {
 
     async getStatsBySite(startDate?: string, endDate?: string, timezone?: string) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/stats/by-site`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/stats/by-site`, {
             headers,
             params: { startDate, endDate, timezone },
             withCredentials: true,
@@ -122,7 +122,7 @@ export const OrdersService = {
 
     async getHourlyStats(siteId?: string, date?: string, timezone?: string) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/stats/hourly`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/stats/hourly`, {
             headers,
             params: {
                 siteId,
@@ -136,7 +136,7 @@ export const OrdersService = {
 
     async getDelayedStats(siteId?: string) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/stats/delayed`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/stats/delayed`, {
             headers,
             params: { siteId },
             withCredentials: true,
@@ -150,7 +150,7 @@ export const OrdersService = {
         options?: { siteId?: string; serviceId?: string; timezone?: string },
     ) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/stats/timeseries`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/stats/timeseries`, {
             headers,
             params: {
                 startDate,
@@ -175,7 +175,7 @@ export const OrdersService = {
         options?: { siteId?: string; serviceId?: string; timezone?: string },
     ) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/stats/throughput`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/stats/throughput`, {
             headers,
             params: {
                 startDate,
@@ -201,7 +201,7 @@ export const OrdersService = {
         options?: { siteId?: string; timezone?: string },
     ) {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/orders/stats/by-service`, {
+        const response = await axios.get(`${getPublicApiUrl()}/orders/stats/by-service`, {
             headers,
             params: {
                 startDate,

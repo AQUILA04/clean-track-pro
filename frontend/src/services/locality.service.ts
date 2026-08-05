@@ -1,6 +1,6 @@
 import { getSession } from 'next-auth/react';
+import { getPublicApiUrl } from '@/lib/public-env';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -22,7 +22,7 @@ export interface Locality {
 export const LocalityService = {
     async list(siteId?: string, activeOnly = false): Promise<Locality[]> {
         const headers = await getAuthHeaders();
-        const url = new URL(`${API_URL}/localities`);
+        const url = new URL(`${getPublicApiUrl()}/localities`);
         if (siteId) url.searchParams.set('siteId', siteId);
         if (activeOnly) url.searchParams.set('activeOnly', 'true');
         const response = await fetch(url.toString(), { headers });
@@ -35,7 +35,7 @@ export const LocalityService = {
 
     async create(data: { site_id: string; name: string }): Promise<Locality> {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/localities`, {
+        const response = await fetch(`${getPublicApiUrl()}/localities`, {
             method: 'POST',
             headers,
             body: JSON.stringify(data),
@@ -49,7 +49,7 @@ export const LocalityService = {
 
     async update(id: string, data: { name?: string; is_active?: boolean }): Promise<Locality> {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/localities/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/localities/${id}`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify(data),
@@ -63,7 +63,7 @@ export const LocalityService = {
 
     async deactivate(id: string): Promise<Locality> {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/localities/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/localities/${id}`, {
             method: 'DELETE',
             headers,
         });

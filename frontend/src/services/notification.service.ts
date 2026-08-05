@@ -1,6 +1,6 @@
 import { getSession } from 'next-auth/react';
+import { getPublicApiUrl } from '@/lib/public-env';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -27,7 +27,7 @@ export interface TenantNotificationConfig {
 export const NotificationService = {
     async getPlatformSettings(): Promise<PlatformNotificationSettings> {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/notifications/platform-settings`, { headers });
+        const response = await fetch(`${getPublicApiUrl()}/notifications/platform-settings`, { headers });
         if (!response.ok) throw new Error('Failed to load platform notification settings');
         return response.json();
     },
@@ -37,7 +37,7 @@ export const NotificationService = {
         currency?: string;
     }): Promise<PlatformNotificationSettings> {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/notifications/platform-settings`, {
+        const response = await fetch(`${getPublicApiUrl()}/notifications/platform-settings`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify(data),
@@ -51,7 +51,7 @@ export const NotificationService = {
 
     async getTenantConfig(): Promise<TenantNotificationConfig> {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/notifications/tenant-config`, { headers });
+        const response = await fetch(`${getPublicApiUrl()}/notifications/tenant-config`, { headers });
         if (!response.ok) throw new Error('Failed to load notification config');
         return response.json();
     },
@@ -61,7 +61,7 @@ export const NotificationService = {
         notification_sms_enabled?: boolean;
     }): Promise<unknown> {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/notifications/tenant-config`, {
+        const response = await fetch(`${getPublicApiUrl()}/notifications/tenant-config`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify(data),

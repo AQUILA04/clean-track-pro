@@ -1,8 +1,8 @@
 import { CFA_PER_EUR, STATIC_RATES_PER_EUR, convertAmount as convertWithRates } from './fx-rates';
+import { getPublicApiUrl } from '@/lib/public-env';
 
 export { CFA_PER_EUR, STATIC_RATES_PER_EUR };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 let cachedRates: Record<string, number> | null = null;
 let cachedAt = 0;
@@ -50,7 +50,7 @@ export async function fetchRatesPerEur(): Promise<Record<string, number>> {
     return cachedRates;
   }
   try {
-    const res = await fetch(`${API_URL}/fx/rates`);
+    const res = await fetch(`${getPublicApiUrl()}/fx/rates`);
     if (!res.ok) throw new Error('FX rates unavailable');
     const body = await res.json();
     const rates = (body?.data?.rates ?? body?.rates ?? {}) as Record<string, number>;
@@ -103,7 +103,7 @@ export async function suggestDisplayCurrency(): Promise<{
   const tzCurrency = currencyFromTimezone(tz);
 
   try {
-    const res = await fetch(`${API_URL}/fx/suggest-currency`);
+    const res = await fetch(`${getPublicApiUrl()}/fx/suggest-currency`);
     if (!res.ok) throw new Error('suggest failed');
     const body = await res.json();
     const data = body?.data ?? body;

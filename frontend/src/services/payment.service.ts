@@ -1,6 +1,6 @@
 import { getSession } from 'next-auth/react';
+import { getPublicApiUrl } from '@/lib/public-env';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -34,7 +34,7 @@ export interface CreatePaymentDto {
 export const PaymentService = {
     create: async (data: CreatePaymentDto) => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/payments`, {
+        const response = await fetch(`${getPublicApiUrl()}/payments`, {
             method: 'POST',
             headers,
             body: JSON.stringify(data),
@@ -48,7 +48,7 @@ export const PaymentService = {
 
     getByOrder: async (orderId: string) => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/payments?order_id=${orderId}`, {
+        const response = await fetch(`${getPublicApiUrl()}/payments?order_id=${orderId}`, {
             method: 'GET',
             headers,
         });

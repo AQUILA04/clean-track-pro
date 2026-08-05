@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth';
 import KeycloakProvider from 'next-auth/providers/keycloak';
 import { parseJwtPayload, resolveRolesFromTokenPayload } from '@/lib/roles';
 import { TENANT_DEACTIVATED_HINT } from '@/lib/tenant-access';
+import { getPublicApiUrl } from '@/lib/public-env';
 
 function getKeycloakConfig() {
     const clientId = process.env.KEYCLOAK_CLIENT_ID;
@@ -16,7 +17,7 @@ function getKeycloakConfig() {
 }
 
 function getApiUrl() {
-    return process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000';
+    return getPublicApiUrl();
 }
 
 function extractClaimsFromAccessToken(accessToken: string) {

@@ -1,8 +1,8 @@
 import axios from 'axios';
+import { getPublicApiUrl } from '@/lib/public-env';
 import { getSession } from 'next-auth/react';
 import { ServicePrice, UpsertServicePriceDto } from '@/types/service-price';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -15,7 +15,7 @@ const getAuthHeaders = async () => {
 export const pricingService = {
     async findAll(): Promise<ServicePrice[]> {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/catalog/prices`, {
+        const response = await axios.get(`${getPublicApiUrl()}/catalog/prices`, {
             headers,
             withCredentials: true,
         });
@@ -24,7 +24,7 @@ export const pricingService = {
 
     async upsert(data: UpsertServicePriceDto): Promise<ServicePrice> {
         const headers = await getAuthHeaders();
-        const response = await axios.post(`${API_URL}/catalog/prices`, data, {
+        const response = await axios.post(`${getPublicApiUrl()}/catalog/prices`, data, {
             headers,
             withCredentials: true,
         });
@@ -33,7 +33,7 @@ export const pricingService = {
 
     async delete(articleTypeId: string, serviceDefinitionId: string): Promise<void> {
         const headers = await getAuthHeaders();
-        await axios.delete(`${API_URL}/catalog/prices`, {
+        await axios.delete(`${getPublicApiUrl()}/catalog/prices`, {
             headers,
             params: {
                 article_type_id: articleTypeId,

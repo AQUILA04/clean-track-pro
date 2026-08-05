@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { getPublicApiUrl } from '@/lib/public-env';
 
 export interface PublicPlan {
     id: string;
@@ -50,14 +50,14 @@ export interface SignupRequest {
 
 export const SignupService = {
     listPublicPlans: async (): Promise<PublicPlan[]> => {
-        const response = await fetch(`${API_URL}/signup/plans`);
+        const response = await fetch(`${getPublicApiUrl()}/signup/plans`);
         if (!response.ok) throw new Error('Impossible de charger les offres');
         const res = await response.json();
         return res.data ?? res;
     },
 
     submit: async (data: SubmitSignupDto): Promise<SignupSubmitResult> => {
-        const response = await fetch(`${API_URL}/signup`, {
+        const response = await fetch(`${getPublicApiUrl()}/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -76,7 +76,7 @@ export const SignupService = {
     },
 
     completeCheckout: async (sessionId: string): Promise<SignupSubmitResult> => {
-        const response = await fetch(`${API_URL}/signup/checkout/complete?session_id=${encodeURIComponent(sessionId)}`);
+        const response = await fetch(`${getPublicApiUrl()}/signup/checkout/complete?session_id=${encodeURIComponent(sessionId)}`);
         if (!response.ok) {
             const body = await response.json().catch(() => null);
             throw new Error(body?.message ?? 'Paiement non confirmé');
@@ -88,7 +88,7 @@ export const SignupService = {
     listRequests: async (status?: string): Promise<SignupRequest[]> => {
         const session = await (await import('next-auth/react')).getSession();
         const params = status ? `?status=${status}` : '';
-        const response = await fetch(`${API_URL}/signup/requests${params}`, {
+        const response = await fetch(`${getPublicApiUrl()}/signup/requests${params}`, {
             headers: {
                 Authorization: `Bearer ${session?.accessToken}`,
             },
@@ -100,7 +100,7 @@ export const SignupService = {
 
     approve: async (id: string): Promise<SignupRequest> => {
         const session = await (await import('next-auth/react')).getSession();
-        const response = await fetch(`${API_URL}/signup/requests/${id}/approve`, {
+        const response = await fetch(`${getPublicApiUrl()}/signup/requests/${id}/approve`, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${session?.accessToken}`,
@@ -113,7 +113,7 @@ export const SignupService = {
 
     reject: async (id: string, reason?: string): Promise<SignupRequest> => {
         const session = await (await import('next-auth/react')).getSession();
-        const response = await fetch(`${API_URL}/signup/requests/${id}/reject`, {
+        const response = await fetch(`${getPublicApiUrl()}/signup/requests/${id}/reject`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -1,6 +1,6 @@
 import { getSession } from 'next-auth/react';
+import { getPublicApiUrl } from '@/lib/public-env';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -83,14 +83,14 @@ export const ExpenseService = {
         const headers = await getAuthHeaders();
         const params = new URLSearchParams();
         if (activeOnly) params.set('activeOnly', 'true');
-        const response = await fetch(`${API_URL}/expenses/types?${params}`, { headers });
+        const response = await fetch(`${getPublicApiUrl()}/expenses/types?${params}`, { headers });
         if (!response.ok) throw new Error('Impossible de charger les types de dépenses');
         return response.json();
     },
 
     createType: async (name: string, description?: string): Promise<ExpenseTypeData> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/expenses/types`, {
+        const response = await fetch(`${getPublicApiUrl()}/expenses/types`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ name, description }),
@@ -107,7 +107,7 @@ export const ExpenseService = {
         data: { name?: string; description?: string; is_active?: boolean },
     ): Promise<ExpenseTypeData> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/expenses/types/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/expenses/types/${id}`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify(data),
@@ -121,7 +121,7 @@ export const ExpenseService = {
 
     deactivateType: async (id: string): Promise<ExpenseTypeData> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/expenses/types/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/expenses/types/${id}`, {
             method: 'DELETE',
             headers,
         });
@@ -141,7 +141,7 @@ export const ExpenseService = {
         if (filters?.typeId) params.set('typeId', filters.typeId);
         params.set('page', String(filters?.page ?? 1));
         params.set('limit', String(filters?.limit ?? 20));
-        const response = await fetch(`${API_URL}/expenses?${params}`, { headers });
+        const response = await fetch(`${getPublicApiUrl()}/expenses?${params}`, { headers });
         if (!response.ok) throw new Error('Impossible de charger les dépenses');
         return response.json();
     },
@@ -156,7 +156,7 @@ export const ExpenseService = {
         if (filters?.siteId) params.set('siteId', filters.siteId);
         if (filters?.startDate) params.set('startDate', filters.startDate);
         if (filters?.endDate) params.set('endDate', filters.endDate);
-        const response = await fetch(`${API_URL}/expenses/stats/total?${params}`, { headers });
+        const response = await fetch(`${getPublicApiUrl()}/expenses/stats/total?${params}`, { headers });
         if (!response.ok) throw new Error('Impossible de charger le total des dépenses');
         const res = await response.json();
         return {
@@ -176,14 +176,14 @@ export const ExpenseService = {
         params.set('startDate', filters.startDate);
         params.set('endDate', filters.endDate);
         if (filters.siteId) params.set('siteId', filters.siteId);
-        const response = await fetch(`${API_URL}/expenses/stats/timeseries?${params}`, { headers });
+        const response = await fetch(`${getPublicApiUrl()}/expenses/stats/timeseries?${params}`, { headers });
         if (!response.ok) throw new Error('Impossible de charger la série des dépenses');
         return response.json();
     },
 
     create: async (payload: CreateExpensePayload): Promise<ExpenseData> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/expenses`, {
+        const response = await fetch(`${getPublicApiUrl()}/expenses`, {
             method: 'POST',
             headers,
             body: JSON.stringify(payload),
@@ -197,7 +197,7 @@ export const ExpenseService = {
 
     remove: async (id: string): Promise<void> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/expenses/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/expenses/${id}`, {
             method: 'DELETE',
             headers,
         });

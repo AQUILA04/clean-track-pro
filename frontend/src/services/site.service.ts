@@ -1,7 +1,7 @@
+import { getPublicApiUrl } from '@/lib/public-env';
 
 import { getSession } from 'next-auth/react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -39,7 +39,7 @@ export interface CreateSiteDto {
 export const SiteService = {
     async getAll(search?: string): Promise<Site[]> {
         const headers = await getAuthHeaders();
-        const url = new URL(`${API_URL}/sites`);
+        const url = new URL(`${getPublicApiUrl()}/sites`);
         if (search) {
             url.searchParams.append('search', search);
         }
@@ -59,7 +59,7 @@ export const SiteService = {
 
     async getById(id: string): Promise<Site> {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/sites/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/sites/${id}`, {
             method: 'GET',
             headers: headers,
         });
@@ -74,7 +74,7 @@ export const SiteService = {
 
     create: async (data: Partial<Site>): Promise<Site> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/sites`, {
+        const response = await fetch(`${getPublicApiUrl()}/sites`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(data),
@@ -90,7 +90,7 @@ export const SiteService = {
 
     update: async (id: string, data: Partial<Site>): Promise<Site> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/sites/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/sites/${id}`, {
             method: 'PATCH',
             headers: headers,
             body: JSON.stringify(data),

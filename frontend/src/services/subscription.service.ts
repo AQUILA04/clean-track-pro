@@ -1,6 +1,6 @@
 import { getSession } from 'next-auth/react';
+import { getPublicApiUrl } from '@/lib/public-env';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -109,7 +109,7 @@ export const mergePlanUpdate = (
 export const SubscriptionService = {
     listPlans: async (): Promise<SubscriptionPlan[]> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/subscriptions/plans`, { headers });
+        const response = await fetch(`${getPublicApiUrl()}/subscriptions/plans`, { headers });
         if (!response.ok) throw new Error(await extractErrorMessage(response, 'Impossible de charger les plans'));
         const res = await response.json();
         const data = unwrapPayload(res) as Array<Record<string, unknown>>;
@@ -118,7 +118,7 @@ export const SubscriptionService = {
 
     createPlan: async (data: CreateSubscriptionPlanDto): Promise<SubscriptionPlan> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/subscriptions/plans`, {
+        const response = await fetch(`${getPublicApiUrl()}/subscriptions/plans`, {
             method: 'POST',
             headers,
             body: JSON.stringify(data),
@@ -130,7 +130,7 @@ export const SubscriptionService = {
 
     updatePlan: async (id: string, data: UpdateSubscriptionPlanDto): Promise<SubscriptionPlan> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/subscriptions/plans/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/subscriptions/plans/${id}`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify(data),

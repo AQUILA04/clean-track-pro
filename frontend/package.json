@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "verify:prod-bundle": "node scripts/verify-prod-bundle.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "jest"

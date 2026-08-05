@@ -1,6 +1,6 @@
 import { getSession } from 'next-auth/react';
+import { getPublicApiUrl } from '@/lib/public-env';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -40,7 +40,7 @@ export interface SiteRemittanceData {
 export const RemittanceService = {
     createCashRemittance: async (sessionId: string, amount: number): Promise<CashRemittanceData> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/remittances/cash`, {
+        const response = await fetch(`${getPublicApiUrl()}/remittances/cash`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ session_id: sessionId, amount }),
@@ -54,7 +54,7 @@ export const RemittanceService = {
 
     acknowledgeCashRemittance: async (id: string, notes?: string) => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/remittances/cash/${id}/acknowledge`, {
+        const response = await fetch(`${getPublicApiUrl()}/remittances/cash/${id}/acknowledge`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify({ notes }),
@@ -68,7 +68,7 @@ export const RemittanceService = {
 
     disputeCashRemittance: async (id: string, notes?: string) => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/remittances/cash/${id}/dispute`, {
+        const response = await fetch(`${getPublicApiUrl()}/remittances/cash/${id}/dispute`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify({ notes }),
@@ -85,7 +85,7 @@ export const RemittanceService = {
         const params = new URLSearchParams();
         if (siteId) params.set('site_id', siteId);
         if (status) params.set('status', status);
-        const response = await fetch(`${API_URL}/remittances/cash?${params}`, {
+        const response = await fetch(`${getPublicApiUrl()}/remittances/cash?${params}`, {
             method: 'GET',
             headers,
         });
@@ -95,7 +95,7 @@ export const RemittanceService = {
 
     createSiteRemittance: async (siteId: string, periodStart: string, periodEnd: string, notes?: string): Promise<SiteRemittanceData> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/remittances/site`, {
+        const response = await fetch(`${getPublicApiUrl()}/remittances/site`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ site_id: siteId, period_start: periodStart, period_end: periodEnd, notes }),
@@ -109,7 +109,7 @@ export const RemittanceService = {
 
     acknowledgeSiteRemittance: async (id: string, notes?: string) => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/remittances/site/${id}/acknowledge`, {
+        const response = await fetch(`${getPublicApiUrl()}/remittances/site/${id}/acknowledge`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify({ notes }),
@@ -123,7 +123,7 @@ export const RemittanceService = {
 
     disputeSiteRemittance: async (id: string, notes?: string) => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/remittances/site/${id}/dispute`, {
+        const response = await fetch(`${getPublicApiUrl()}/remittances/site/${id}/dispute`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify({ notes }),
@@ -140,7 +140,7 @@ export const RemittanceService = {
         const params = new URLSearchParams();
         if (siteId) params.set('site_id', siteId);
         if (status) params.set('status', status);
-        const response = await fetch(`${API_URL}/remittances/site?${params}`, {
+        const response = await fetch(`${getPublicApiUrl()}/remittances/site?${params}`, {
             method: 'GET',
             headers,
         });

@@ -22,6 +22,7 @@ export const metadata: Metadata = {
 
 import NextAuthProvider from "@/context/NextAuthProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { PublicEnvScript } from "@/components/providers/PublicEnvScript";
 import { ToastProvider } from "@/components/ui/simple-toast";
 
 export default function RootLayout({
@@ -34,6 +35,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} antialiased`}
       >
+        <PublicEnvScript />
         <NextAuthProvider>
           <ThemeProvider
             attribute="class"

@@ -1,3 +1,4 @@
+import { getPublicApiUrl } from '@/lib/public-env';
 
 import { getSession } from 'next-auth/react';
 
@@ -75,12 +76,11 @@ const getAuthHeaders = async () => {
     };
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export const TenantService = {
     create: async (data: CreateTenantDto): Promise<Tenant> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/tenants`, {
+        const response = await fetch(`${getPublicApiUrl()}/tenants`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(data),
@@ -99,7 +99,7 @@ export const TenantService = {
 
     getAll: async (): Promise<Tenant[]> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/tenants`, {
+        const response = await fetch(`${getPublicApiUrl()}/tenants`, {
             method: 'GET',
             headers: headers,
         });
@@ -114,7 +114,7 @@ export const TenantService = {
 
     getById: async (id: string): Promise<Tenant> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/tenants/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/tenants/${id}`, {
             method: 'GET',
             headers,
         });
@@ -129,7 +129,7 @@ export const TenantService = {
 
     update: async (id: string, data: UpdateTenantDto): Promise<Tenant> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/tenants/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/tenants/${id}`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify(data),
@@ -145,7 +145,7 @@ export const TenantService = {
 
     delete: async (id: string): Promise<void> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/tenants/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/tenants/${id}`, {
             method: 'DELETE',
             headers,
         });
@@ -163,7 +163,7 @@ export const TenantService = {
 
     updateBranding: async (updateTenantBrandingDto: UpdateTenantBrandingDto): Promise<Tenant> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/tenants/me`, {
+        const response = await fetch(`${getPublicApiUrl()}/tenants/me`, {
             method: 'PATCH',
             headers: headers,
             body: JSON.stringify(updateTenantBrandingDto),
@@ -183,7 +183,7 @@ export const TenantService = {
 
     updateConfig: async (updateTenantConfigDto: UpdateTenantConfigDto): Promise<Tenant> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/tenants/me/config`, {
+        const response = await fetch(`${getPublicApiUrl()}/tenants/me/config`, {
             method: 'PATCH',
             headers: headers,
             body: JSON.stringify(updateTenantConfigDto),
@@ -199,7 +199,7 @@ export const TenantService = {
 
     getCurrentTenant: async (): Promise<Tenant> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/tenants/me`, {
+        const response = await fetch(`${getPublicApiUrl()}/tenants/me`, {
             method: 'GET',
             headers: headers,
         });

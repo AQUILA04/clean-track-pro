@@ -1,7 +1,7 @@
 import { getSession } from 'next-auth/react';
+import { getPublicApiUrl } from '@/lib/public-env';
 import { ClientFormValues } from '../lib/validations/client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async (): Promise<Record<string, string>> => {
     const session = await getSession();
@@ -39,7 +39,7 @@ export type ClientListResponse = {
 export const ClientService = {
     create: async (data: ClientFormValues): Promise<ClientRecord> => {
         const authHeaders = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/clients`, {
+        const response = await fetch(`${getPublicApiUrl()}/clients`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -58,7 +58,7 @@ export const ClientService = {
 
     update: async (id: string, data: Partial<ClientFormValues>): Promise<ClientRecord> => {
         const authHeaders = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/clients/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/clients/${id}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -77,7 +77,7 @@ export const ClientService = {
 
     getById: async (id: string): Promise<ClientRecord> => {
         const authHeaders = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/clients/${id}`, {
+        const response = await fetch(`${getPublicApiUrl()}/clients/${id}`, {
             headers: authHeaders,
         });
 
@@ -100,7 +100,7 @@ export const ClientService = {
         if (params?.limit) searchParams.set('limit', String(params.limit));
 
         const qs = searchParams.toString();
-        const response = await fetch(`${API_URL}/clients${qs ? `?${qs}` : ''}`, {
+        const response = await fetch(`${getPublicApiUrl()}/clients${qs ? `?${qs}` : ''}`, {
             headers: authHeaders,
         });
 
@@ -113,7 +113,7 @@ export const ClientService = {
 
     search: async (query: string): Promise<ClientRecord[]> => {
         const authHeaders = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/clients/search?q=${encodeURIComponent(query)}`, {
+        const response = await fetch(`${getPublicApiUrl()}/clients/search?q=${encodeURIComponent(query)}`, {
             headers: authHeaders,
         });
 

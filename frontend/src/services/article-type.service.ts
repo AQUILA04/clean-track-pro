@@ -1,9 +1,9 @@
 import axios from 'axios';
+import { getPublicApiUrl } from '@/lib/public-env';
 import { CreateArticleTypeDto, UpdateArticleTypeDto } from '../types/article-type';
 import { MOCK_ARTICLES } from '../data/mock-articles';
 import type { ArticleType } from '../types/article-type';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'; // Adjust based on env
 
 import { getSession } from 'next-auth/react';
 
@@ -18,7 +18,7 @@ const getAuthHeaders = async () => {
 export const articleTypeService = {
     async findAll(query?: string): Promise<ArticleType[]> {
         const headers = await getAuthHeaders();
-        const response = await axios.get(`${API_URL}/article-types`, {
+        const response = await axios.get(`${getPublicApiUrl()}/article-types`, {
             headers,
             params: { q: query },
             withCredentials: true, // If using cookies
@@ -31,7 +31,7 @@ export const articleTypeService = {
 
     async create(data: CreateArticleTypeDto): Promise<ArticleType> {
         const headers = await getAuthHeaders();
-        const response = await axios.post(`${API_URL}/article-types`, data, {
+        const response = await axios.post(`${getPublicApiUrl()}/article-types`, data, {
             headers,
             withCredentials: true,
         });
@@ -41,7 +41,7 @@ export const articleTypeService = {
 
     async update(id: string, data: UpdateArticleTypeDto): Promise<ArticleType> {
         const headers = await getAuthHeaders();
-        const response = await axios.patch(`${API_URL}/article-types/${id}`, data, {
+        const response = await axios.patch(`${getPublicApiUrl()}/article-types/${id}`, data, {
             headers,
             withCredentials: true,
         });
@@ -51,7 +51,7 @@ export const articleTypeService = {
 
     async delete(id: string): Promise<void> {
         const headers = await getAuthHeaders();
-        await axios.delete(`${API_URL}/article-types/${id}`, {
+        await axios.delete(`${getPublicApiUrl()}/article-types/${id}`, {
             headers,
             withCredentials: true,
         });

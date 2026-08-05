@@ -189,6 +189,7 @@ services:
       additional_contexts:
         certs: ./cert
       args:
+        APP_ENV: development
         NEXT_PUBLIC_API_URL: http://localhost:3000
         KEYCLOAK_CLIENT_ID: cleantrack-client
         KEYCLOAK_CLIENT_SECRET: cleantrack-dev-secret

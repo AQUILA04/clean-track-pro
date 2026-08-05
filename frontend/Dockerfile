@@ -28,13 +28,27 @@ ENV NEXT_TURBOPACK_EXPERIMENTAL_USE_SYSTEM_TLS_CERTS=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# NEXT_PUBLIC_* are inlined at build time; server vars needed for Next.js route analysis
-ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+# NEXT_PUBLIC_* are inlined at build time for any residual client references.
+# Production images MUST pass an explicit public API URL — never ship a localhost default.
+# Runtime injection (PublicEnvScript + getPublicApiUrl) is the source of truth at request time.
+ARG APP_ENV=production
+ARG NEXT_PUBLIC_API_URL
 ARG KEYCLOAK_CLIENT_ID=cleantrack-client
 ARG KEYCLOAK_CLIENT_SECRET=cleantrack-dev-secret
 ARG KEYCLOAK_ISSUER=http://localhost:8080/realms/cleantrack
 ARG NEXTAUTH_URL=http://localhost:3001
 ARG NEXTAUTH_SECRET=cleantrack-dev-nextauth-secret-min-32-chars
+
+RUN if [ -z "$NEXT_PUBLIC_API_URL" ]; then \
+      echo "ERROR: NEXT_PUBLIC_API_URL build-arg is required (e.g. https://cleantrack-api.example.com)" >&2; \
+      exit 1; \
+    fi \
+ && if [ "$APP_ENV" = "production" ] && echo "$NEXT_PUBLIC_API_URL" | grep -Eq 'localhost|127\.0\.0\.1'; then \
+      echo "ERROR: refusing production image with localhost NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >&2; \
+      exit 1; \
+    fi
+
+ENV APP_ENV=$APP_ENV
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV KEYCLOAK_CLIENT_ID=$KEYCLOAK_CLIENT_ID
 ENV KEYCLOAK_CLIENT_SECRET=$KEYCLOAK_CLIENT_SECRET
@@ -42,7 +56,8 @@ ENV KEYCLOAK_ISSUER=$KEYCLOAK_ISSUER
 ENV NEXTAUTH_URL=$NEXTAUTH_URL
 ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN npm run build \
+ && node scripts/verify-prod-bundle.mjs
 
 # Stage 3: Production image
 FROM node:20-alpine AS runner

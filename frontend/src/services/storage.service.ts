@@ -1,4 +1,5 @@
 import { getSession } from 'next-auth/react';
+import { getPublicApiUrl } from '@/lib/public-env';
 import { parseFetchError } from '@/lib/api-error';
 
 export enum StorageSlotStatus {
@@ -73,14 +74,13 @@ const getJsonAuthHeaders = async () => {
     };
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export const StorageService = {
     getAll: async (siteId: string, slotType?: SlotType): Promise<StorageSlot[]> => {
         const headers = await getJsonAuthHeaders();
         const params = new URLSearchParams({ site_id: siteId });
         if (slotType) params.set('slot_type', slotType);
-        const response = await fetch(`${API_URL}/storage/slots?${params}`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/slots?${params}`, {
             method: 'GET',
             headers: headers,
         });
@@ -93,7 +93,7 @@ export const StorageService = {
         Array<{ siteId: string; total: number; occupied: number; rate: number }>
     > => {
         const headers = await getJsonAuthHeaders();
-        const response = await fetch(`${API_URL}/storage/stats/occupancy`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/stats/occupancy`, {
             method: 'GET',
             headers,
         });
@@ -104,7 +104,7 @@ export const StorageService = {
 
     getSlotContents: async (slotId: string): Promise<SlotContentsResponse> => {
         const headers = await getJsonAuthHeaders();
-        const response = await fetch(`${API_URL}/storage/slots/${slotId}/contents`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/slots/${slotId}/contents`, {
             method: 'GET',
             headers,
         });
@@ -117,7 +117,7 @@ export const StorageService = {
 
     create: async (data: CreateStorageSlotDto): Promise<StorageSlot> => {
         const headers = await getJsonAuthHeaders();
-        const response = await fetch(`${API_URL}/storage/slots`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/slots`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(data),
@@ -132,7 +132,7 @@ export const StorageService = {
 
     assignOrder: async (orderId: string, slotId: string): Promise<void> => {
         const headers = await getJsonAuthHeaders();
-        const response = await fetch(`${API_URL}/storage/assign`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/assign`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({ order_id: orderId, shelf_slot_id: slotId }),
@@ -144,7 +144,7 @@ export const StorageService = {
 
     releaseOrder: async (orderId: string): Promise<void> => {
         const headers = await getJsonAuthHeaders();
-        const response = await fetch(`${API_URL}/storage/release/${orderId}`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/release/${orderId}`, {
             method: 'POST',
             headers: headers,
         });
@@ -156,7 +156,7 @@ export const StorageService = {
 
     lookupOrder: async (orderId: string): Promise<any> => {
         const headers = await getJsonAuthHeaders();
-        const response = await fetch(`${API_URL}/storage/lookup/${orderId}`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/lookup/${orderId}`, {
             method: 'GET',
             headers: headers,
         });
@@ -179,7 +179,7 @@ export const StorageService = {
         const params = new URLSearchParams({ q });
         if (options?.siteId) params.set('siteId', options.siteId);
         if (options?.statuses?.length) params.set('statuses', options.statuses.join(','));
-        const response = await fetch(`${API_URL}/storage/lookup?${params}`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/lookup?${params}`, {
             method: 'GET',
             headers,
         });
@@ -192,7 +192,7 @@ export const StorageService = {
 
     deliverOrder: async (orderId: string): Promise<void> => {
         const headers = await getJsonAuthHeaders();
-        const response = await fetch(`${API_URL}/storage/deliver/${orderId}`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/deliver/${orderId}`, {
             method: 'POST',
             headers: headers,
         });
@@ -207,7 +207,7 @@ export const StorageService = {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(`${API_URL}/storage/upload`, {
+        const response = await fetch(`${getPublicApiUrl()}/storage/upload`, {
             method: 'POST',
             headers: headers, // Do not set Content-Type for FormData, browser does it
             body: formData,

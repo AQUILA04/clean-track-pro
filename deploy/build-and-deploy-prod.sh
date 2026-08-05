@@ -12,7 +12,16 @@ docker build --build-context certs=/opt/cleantrack/repo/cert -t cleantrack-backe
 
 echo "=== Building frontend ==="
 cd /opt/cleantrack/repo/frontend
+if [[ -z "${NEXT_PUBLIC_API_URL:-}" ]]; then
+  echo "ERROR: NEXT_PUBLIC_API_URL missing in /opt/cleantrack/prod/.env" >&2
+  exit 1
+fi
+if echo "$NEXT_PUBLIC_API_URL" | grep -Eq 'localhost|127\.0\.0\.1'; then
+  echo "ERROR: refusing to build prod frontend with NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >&2
+  exit 1
+fi
 docker build --build-context certs=/opt/cleantrack/repo/cert \
+  --build-arg "APP_ENV=production" \
   --build-arg "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" \
   --build-arg "NEXTAUTH_URL=${NEXTAUTH_URL}" \
   --build-arg "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" \
@@ -86,9 +95,14 @@ docker compose \
   exec -T backend npm run keycloak:setup || echo "Keycloak setup skipped or failed (check logs)"
 
 echo "=== Smoke from VPS ==="
-curl -skI "https://cleantrack.optimizesolux.com/" | head -15 || true
-curl -skI "https://cleantrack-api.optimizesolux.com/" | head -15 || true
-curl -skI "https://cleantrack-auth.optimizesolux.com/" | head -15 || true
+chmod +x /opt/cleantrack/deploy/smoke-prod.sh 2>/dev/null || true
+if [[ -x /opt/cleantrack/deploy/smoke-prod.sh ]]; then
+  /opt/cleantrack/deploy/smoke-prod.sh
+else
+  curl -skI "https://cleantrack.optimizesolux.com/" | head -15 || true
+  curl -skI "https://cleantrack-api.optimizesolux.com/" | head -15 || true
+  curl -skI "https://cleantrack-auth.optimizesolux.com/" | head -15 || true
+fi
 
 echo "=== DONE ==="
 docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'

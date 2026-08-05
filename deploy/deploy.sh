@@ -261,4 +261,33 @@ tail -n +1 "$RELEASE_FILE"
 echo "Touching current pointer"
 ln -sfn "$RELEASE_FILE" "$RELEASES_DIR/${ENV}_current.txt"
 
+# ---------------------------------------------------------------------------
+# Post-deploy smoke: refuse a frontend that still calls localhost APIs.
+# NEXT_PUBLIC_* is baked at image build — runtime .env alone cannot fix a bad image.
+# ---------------------------------------------------------------------------
+if [[ "$ENV" == "prod" ]]; then
+  echo "Smoke-checking frontend bundle for localhost API URLs..."
+  # next-auth client embeds http://localhost:3000/api/auth as a URL parser sentinel — ignore it.
+  if docker compose \
+    -f "$COMPOSE_FILE" \
+    --project-name "cleantrack-$ENV" \
+    --env-file "$ENV_FILE" \
+    exec -T frontend sh -c 'grep -R -E "http://localhost:3000|http://127\\.0\\.0\\.1:3000" /app/.next/static 2>/dev/null | grep -v "/api/auth" | head -5' \
+    | grep -q .; then
+    echo "ERROR: frontend image still contains localhost:3000 in client assets (non-auth)." >&2
+    echo "Rebuild with --build-arg NEXT_PUBLIC_API_URL=https://\${API_HOSTNAME} (CI must pass this)." >&2
+    exit 1
+  fi
+  echo "Frontend localhost smoke check: OK"
+
+  safe_source_env "$ENV_FILE"
+  APP_URL="https://${APP_HOSTNAME:-cleantrack.optimizesolux.com}"
+  API_URL_SMOKE="https://${API_HOSTNAME:-cleantrack-api.optimizesolux.com}"
+  AUTH_URL="https://${KEYCLOAK_HOSTNAME:-cleantrack-auth.optimizesolux.com}/realms/cleantrack"
+  echo "HTTP smoke: app=$APP_URL api=$API_URL_SMOKE auth=$AUTH_URL"
+  curl -skf -o /dev/null -w "app=%{http_code}\n" "$APP_URL/" || echo "WARN: app HTTP check failed"
+  curl -sk -o /dev/null -w "api=%{http_code}\n" "$API_URL_SMOKE/" || true
+  curl -skf -o /dev/null -w "auth=%{http_code}\n" "$AUTH_URL" || echo "WARN: auth HTTP check failed"
+fi
+
 echo "Done"

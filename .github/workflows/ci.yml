@@ -149,6 +149,14 @@ jobs:
         build-contexts: |
           certs=cert
         push: true
+        # NEXT_PUBLIC_* is baked at build time — never omit (Dockerfile defaults used to be localhost).
+        # Runtime PublicEnvScript still overrides from container env at request time.
+        build-args: |
+          APP_ENV=production
+          NEXT_PUBLIC_API_URL=https://cleantrack-api.optimizesolux.com
+          NEXTAUTH_URL=https://cleantrack.optimizesolux.com
+          KEYCLOAK_ISSUER=https://cleantrack-auth.optimizesolux.com/realms/cleantrack
+          KEYCLOAK_CLIENT_ID=cleantrack-client
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-frontend:${{ github.sha }}
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-frontend:latest

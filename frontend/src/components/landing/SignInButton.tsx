@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
+import { getSignInPageUrl } from '@/lib/auth-urls';
 
 type SignInButtonVariant = 'nav' | 'navPrimary' | 'hero' | 'cta' | 'footer';
 
@@ -26,32 +26,10 @@ export function SignInButton({
     children = 'Se connecter',
     showArrow = false,
 }: SignInButtonProps) {
-    const [loading, setLoading] = useState(false);
-
-    const handleSignIn = () => {
-        setLoading(true);
-        // POST via NextAuth → redirect direct vers Keycloak (pas la page intermédiaire GET)
-        void signIn('keycloak', { callbackUrl: '/dashboard' });
-    };
-
     return (
-        <button
-            type="button"
-            onClick={handleSignIn}
-            disabled={loading}
-            className={`${variantStyles[variant]} disabled:opacity-70`}
-        >
-            {loading ? (
-                <>
-                    <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-                    Connexion…
-                </>
-            ) : (
-                <>
-                    {children}
-                    {showArrow && <ArrowRight className="h-5 w-5" />}
-                </>
-            )}
-        </button>
+        <Link href={getSignInPageUrl('/dashboard')} className={variantStyles[variant]}>
+            {children}
+            {showArrow && <ArrowRight className="h-5 w-5" />}
+        </Link>
     );
 }

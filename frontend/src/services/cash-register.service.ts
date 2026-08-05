@@ -1,6 +1,6 @@
 import { getSession } from 'next-auth/react';
+import { getPublicApiUrl } from '@/lib/public-env';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 const getAuthHeaders = async () => {
     const session = await getSession();
@@ -38,7 +38,7 @@ export interface SessionSummary {
 export const CashRegisterService = {
     open: async (openingBalance: number = 0): Promise<CashRegisterSessionData> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/cash-register/open`, {
+        const response = await fetch(`${getPublicApiUrl()}/cash-register/open`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ opening_balance: openingBalance }),
@@ -52,7 +52,7 @@ export const CashRegisterService = {
 
     close: async (declaredCash: number, notes?: string): Promise<CashRegisterSessionData> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/cash-register/close`, {
+        const response = await fetch(`${getPublicApiUrl()}/cash-register/close`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ declared_cash: declaredCash, notes }),
@@ -66,7 +66,7 @@ export const CashRegisterService = {
 
     getCurrent: async (): Promise<CashRegisterSessionData | null> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/cash-register/current`, {
+        const response = await fetch(`${getPublicApiUrl()}/cash-register/current`, {
             method: 'GET',
             headers,
         });
@@ -83,7 +83,7 @@ export const CashRegisterService = {
         const params = new URLSearchParams();
         if (siteId) params.set('site_id', siteId);
         if (date) params.set('date', date);
-        const response = await fetch(`${API_URL}/cash-register/sessions?${params}`, {
+        const response = await fetch(`${getPublicApiUrl()}/cash-register/sessions?${params}`, {
             method: 'GET',
             headers,
         });
@@ -93,7 +93,7 @@ export const CashRegisterService = {
 
     getSessionSummary: async (id: string): Promise<SessionSummary> => {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/cash-register/sessions/${id}/summary`, {
+        const response = await fetch(`${getPublicApiUrl()}/cash-register/sessions/${id}/summary`, {
             method: 'GET',
             headers,
         });
