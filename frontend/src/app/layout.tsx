@@ -11,6 +11,13 @@ export const metadata: Metadata = {
   title: "CleanTrack Pro — Gestion de pressing & blanchisserie",
   description:
     "Solution SaaS pour gérer votre pressing : réception rapide, suivi des commandes, rayons, paiements et tableaux de bord.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+  },
 };
 
 import NextAuthProvider from "@/context/NextAuthProvider";
