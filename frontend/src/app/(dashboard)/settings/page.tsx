@@ -22,6 +22,7 @@ import { TenantService } from '@/services/tenant.service';
 import { StorageService } from '@/services/storage.service';
 import { useTenantConfig } from '@/context/tenant-config.context';
 import { useToast } from '@/components/ui/simple-toast';
+import { PageLoader } from '@/components/ui/loading';
 
 const selectClassName =
     'w-full px-4 py-3 bg-card border border-border rounded-sm text-foreground font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10';
@@ -221,6 +222,10 @@ export default function SettingsPage() {
     };
 
     const busy = savingBranding || savingCurrency || uploadingLogo || uploadingFavicon;
+
+    if (tenantLoading) {
+        return <PageLoader label="Chargement des paramètres…" />;
+    }
 
     return (
         <div className="max-w-7xl mx-auto p-8 space-y-8">

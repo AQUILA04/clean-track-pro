@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ClientRegistrationForm } from '@/components/clients/ClientRegistrationForm';
 import { ClientService, ClientRecord } from '@/services/client.service';
+import { PageLoader } from '@/components/ui/loading';
 
 export default function EditClientPage() {
     const params = useParams();
@@ -31,7 +32,7 @@ export default function EditClientPage() {
     }, [clientId]);
 
     if (loading) {
-        return <div className="py-10 text-muted-foreground">Chargement...</div>;
+        return <PageLoader label="Chargement du client…" />;
     }
 
     if (error || !client) {

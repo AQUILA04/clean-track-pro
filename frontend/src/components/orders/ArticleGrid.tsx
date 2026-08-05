@@ -5,6 +5,7 @@ import { Shirt, Ticket, Bed, Briefcase, Gem, Package, Home, Box, Tag } from 'luc
 import { articleTypeService } from '../../services/article-type.service';
 import { ArticleType } from '../../types/article-type';
 import { useOrderDraft } from '../../context/order-draft.context';
+import { ContentLoader } from '@/components/ui/loading';
 import { pricingService } from '../../services/pricing.service';
 import { ServicePrice } from '../../types/service-price'; // Assuming locally accessible if not exported from service file
 
@@ -102,7 +103,7 @@ export const ArticleGrid: React.FC<ArticleGridProps> = ({ className }) => {
     };
 
     if (loading) {
-        return <div className="p-4 text-center">Loading articles...</div>;
+        return <ContentLoader label="Chargement du catalogue…" className="p-4" />;
     }
 
     return (

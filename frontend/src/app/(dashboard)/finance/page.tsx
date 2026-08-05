@@ -10,6 +10,7 @@ import { hasAnyRole, getSessionRoles, getSiteIdFromSession } from '@/lib/roles';
 import { formatOperatorLabel, formatSiteLabel, indexById } from '@/lib/entity-display';
 import { CheckCircle2, XCircle, Clock, Send, ArrowRight } from 'lucide-react';
 import { useFormatMoney } from '@/context/tenant-config.context';
+import { PageLoader } from '@/components/ui/loading';
 
 const STATUS_STYLES: Record<string, string> = {
     PENDING: 'bg-amber-500/10 text-amber-400',
@@ -135,14 +136,7 @@ export default function FinancePage() {
     };
 
     if (loading) {
-        return (
-            <div className="container mx-auto max-w-5xl p-6">
-                <h1 className="text-2xl font-bold mb-6 text-foreground">Finance</h1>
-                <div className="flex items-center justify-center h-64">
-                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-            </div>
-        );
+        return <PageLoader title="Finance" label="Chargement des données financières…" />;
     }
 
     return (

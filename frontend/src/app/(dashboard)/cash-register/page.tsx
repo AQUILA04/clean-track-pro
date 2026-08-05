@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react';
 import { hasAnyRole, getSessionRoles, getSiteIdFromSession } from '@/lib/roles';
 import { formatOperatorLabel, indexById } from '@/lib/entity-display';
 import { Banknote, Smartphone, CreditCard, Building2, Clock, CheckCircle2, AlertTriangle, Send } from 'lucide-react';
+import { PageLoader } from '@/components/ui/loading';
 
 const METHOD_LABELS: Record<string, { label: string; icon: React.ElementType }> = {
     CASH: { label: 'Especes', icon: Banknote },
@@ -138,14 +139,7 @@ export default function CashRegisterPage() {
     };
 
     if (loading) {
-        return (
-            <div className="container mx-auto max-w-4xl p-6">
-                <h1 className="text-2xl font-bold mb-6 text-foreground">Ma Caisse</h1>
-                <div className="flex items-center justify-center h-64">
-                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-            </div>
-        );
+        return <PageLoader title="Ma Caisse" label="Chargement de la caisse…" />;
     }
 
     return (

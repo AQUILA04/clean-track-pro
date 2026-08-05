@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useDebounce } from 'use-debounce';
 import { Eye, Pencil, Plus, Search } from 'lucide-react';
 import { ClientService, ClientRecord } from '@/services/client.service';
+import { TableLoadingRow } from '@/components/ui/loading';
 
 export default function ClientsListPage() {
     const [clients, setClients] = useState<ClientRecord[]>([]);
@@ -104,11 +105,7 @@ export default function ClientsListPage() {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr>
-                                    <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
-                                        Chargement...
-                                    </td>
-                                </tr>
+                                <TableLoadingRow colSpan={7} label="Chargement des clients…" />
                             ) : clients.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">

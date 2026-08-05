@@ -24,6 +24,7 @@ import {
     type DashboardOrder,
     type OpsQueues,
 } from '@/components/dashboard/ops-queues';
+import { ContentLoader } from '@/components/ui/loading';
 
 const shortcuts = [
     { href: '/orders', label: 'Nouvelle commande', icon: ShoppingBag },
@@ -92,9 +93,7 @@ export function UserSiteOpsHome() {
     }
 
     if (loading) {
-        return (
-            <div className="p-8 text-center text-muted-foreground">Chargement...</div>
-        );
+        return <ContentLoader label="Chargement…" className="p-8" />;
     }
 
     const counters = [

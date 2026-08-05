@@ -13,6 +13,7 @@ import { AgencyLocalitiesCard } from '@/components/agencies/AgencyLocalitiesCard
 import { SiteService, Site } from '@/services/site.service';
 import { UserService } from '@/services/user.service';
 import { OrdersService } from '@/services/orders.service';
+import { PageLoader } from '@/components/ui/loading';
 import { StorageService, StorageSlotStatus } from '@/services/storage.service';
 
 interface TeamMember {
@@ -161,11 +162,7 @@ export default function AgencyDetailsPage({ params }: { params: Promise<{ id: st
     }, [id]);
 
     if (loading) {
-        return (
-            <div className="p-8 text-center text-muted-foreground">
-                Chargement des détails de l&apos;agence...
-            </div>
-        );
+        return <PageLoader label="Chargement des détails de l'agence…" />;
     }
 
     if (error || !site) {

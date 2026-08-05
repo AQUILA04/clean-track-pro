@@ -24,6 +24,7 @@ import { useToast } from '@/components/ui/simple-toast';
 import { TenantService } from '@/services/tenant.service';
 import { DEFAULT_TENANT_CURRENCY } from '@/lib/currencies';
 import { useTenantConfig } from '@/context/tenant-config.context';
+import { ContentLoader } from '@/components/ui/loading';
 
 
 const TABS = [
@@ -530,9 +531,7 @@ export default function CataloguePage() {
                 {/* Content */}
                 {activeTab === 'types' && (
                     articlesLoading ? (
-                        <div className="flex justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
+                        <ContentLoader label="Chargement des articles…" />
                     ) : (
                         <>
                             <ArticleTable
@@ -556,9 +555,7 @@ export default function CataloguePage() {
 
                 {activeTab === 'services' && (
                     servicesLoading ? (
-                        <div className="flex justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
+                        <ContentLoader label="Chargement des services…" />
                     ) : (
                         <>
                             <ServiceTable
@@ -579,23 +576,25 @@ export default function CataloguePage() {
                 )}
 
                 {activeTab === 'pricing' && (
-                    <PricingMatrix
-                        articles={filteredArticles}
-                        services={services}
-                        pricingData={pricingState}
-                        onPriceChange={handlePriceChange}
-                        isDirty={isPricingDirty}
-                        onSave={handleSavePricing}
-                    />
+                    pricingLoading ? (
+                        <ContentLoader label="Chargement de la grille tarifaire…" />
+                    ) : (
+                        <PricingMatrix
+                            articles={filteredArticles}
+                            services={services}
+                            pricingData={pricingState}
+                            onPriceChange={handlePriceChange}
+                            isDirty={isPricingDirty}
+                            onSave={handleSavePricing}
+                        />
+                    )
                 )}
 
 
 
                 {activeTab === 'express' && (
                     expressLoading ? (
-                        <div className="flex justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
+                        <ContentLoader label="Chargement du mode express…" />
                     ) : (
                         <ExpressMode
                             initialData={expressConfig ? {

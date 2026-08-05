@@ -33,6 +33,7 @@ import {
     type DashboardOrder,
     type OpsQueues,
 } from '@/components/dashboard/ops-queues';
+import { ContentLoader } from '@/components/ui/loading';
 
 const serviceLabel = (level?: string) => {
     if (level === 'EXPRESS') return 'Express';
@@ -148,9 +149,7 @@ export function AdminSiteDashboard() {
     }
 
     if (loading) {
-        return (
-            <div className="p-8 text-center text-muted-foreground">Chargement du tableau de bord...</div>
-        );
+        return <ContentLoader label="Chargement du tableau de bord…" className="p-8" />;
     }
 
     const tasks: Array<{

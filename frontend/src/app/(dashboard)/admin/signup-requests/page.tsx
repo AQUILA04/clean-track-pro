@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SignupService, type SignupRequest } from '@/services/signup.service';
 import { useToast } from '@/components/ui/simple-toast';
+import { ContentLoader } from '@/components/ui/loading';
 
 export default function SignupRequestsPage() {
     const { showToast } = useToast();
@@ -84,7 +85,7 @@ export default function SignupRequestsPage() {
             </div>
 
             {loading ? (
-                <p className="text-muted-foreground">Chargement...</p>
+                <ContentLoader label="Chargement des demandes…" />
             ) : requests.length === 0 ? (
                 <Card className="p-8 text-center text-muted-foreground">Aucune demande</Card>
             ) : (

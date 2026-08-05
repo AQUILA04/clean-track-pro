@@ -5,15 +5,18 @@ import { Bell } from 'lucide-react';
 import { NotificationService, PlatformNotificationSettings } from '@/services/notification.service';
 import { useToast } from '@/components/ui/simple-toast';
 import { getErrorMessage } from '@/lib/api-error';
+import { PageLoader } from '@/components/ui/loading';
 
 export default function AdminNotificationsPage() {
     const { toast } = useToast();
     const [settings, setSettings] = useState<PlatformNotificationSettings | null>(null);
+    const [loading, setLoading] = useState(true);
     const [price, setPrice] = useState('');
     const [currency, setCurrency] = useState<'EUR' | 'USD'>('EUR');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
+        setLoading(true);
         NotificationService.getPlatformSettings()
             .then((s) => {
                 setSettings(s);
@@ -26,7 +29,8 @@ export default function AdminNotificationsPage() {
                     description: getErrorMessage(err, 'Chargement impossible'),
                     variant: 'destructive',
                 });
-            });
+            })
+            .finally(() => setLoading(false));
     }, [toast]);
 
     const handleSave = async () => {
@@ -52,6 +56,10 @@ export default function AdminNotificationsPage() {
             setSaving(false);
         }
     };
+
+    if (loading) {
+        return <PageLoader label="Chargement des paramètres…" />;
+    }
 
     return (
         <div className="max-w-2xl mx-auto p-6 space-y-6">

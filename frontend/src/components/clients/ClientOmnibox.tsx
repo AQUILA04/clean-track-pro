@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDebounce } from 'use-debounce';
 import { ClientService, ClientRecord } from '../../services/client.service';
+import { Spinner } from '@/components/ui/loading';
 
 interface ClientOmniboxProps {
     onSelect?: (client: ClientRecord) => void;
@@ -117,7 +118,7 @@ export function ClientOmnibox({
                 />
                 {isLoading && (
                     <div className="absolute right-3 top-3">
-                        <div className="animate-spin h-5 w-5 border-2 border-primary rounded-full border-t-transparent"></div>
+                        <Spinner size="sm" />
                     </div>
                 )}
             </div>

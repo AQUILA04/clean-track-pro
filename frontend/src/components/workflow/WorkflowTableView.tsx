@@ -9,6 +9,7 @@ import { StatusLabel } from '@/components/shared/StatusLabel';
 import { resolveDisplayOrderStatus } from '@/lib/status-labels';
 import { isExpressOrder, type WorkflowOrder } from '@/lib/workflow-kanban';
 import { Badge } from '@/components/ui/Badge';
+import { ContentLoader } from '@/components/ui/loading';
 
 const AVATAR_COLORS = [
     'bg-violet-500/20 text-violet-300',
@@ -43,8 +44,8 @@ interface WorkflowTableViewProps {
 export function WorkflowTableView({ orders, loading, onStore }: WorkflowTableViewProps) {
     if (loading) {
         return (
-            <div className="rounded-xl border border-border bg-card p-10 text-center text-muted-foreground">
-                Chargement des commandes…
+            <div className="rounded-xl border border-border bg-card">
+                <ContentLoader label="Chargement des commandes…" />
             </div>
         );
     }

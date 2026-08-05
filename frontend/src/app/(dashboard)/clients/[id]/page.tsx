@@ -8,6 +8,7 @@ import { ClientService, ClientRecord } from '@/services/client.service';
 import { OrdersService } from '@/services/orders.service';
 import { StatusLabel } from '@/components/shared/StatusLabel';
 import { useFormatMoney } from '@/context/tenant-config.context';
+import { PageLoader, TableLoadingRow } from '@/components/ui/loading';
 
 type ClientOrder = {
     id: string;
@@ -64,7 +65,7 @@ export default function ClientDetailPage() {
     }, [loadClient, loadOrders]);
 
     if (loading) {
-        return <div className="py-10 text-muted-foreground">Chargement...</div>;
+        return <PageLoader label="Chargement du client…" />;
     }
 
     if (error || !client) {
@@ -157,11 +158,7 @@ export default function ClientDetailPage() {
                         </thead>
                         <tbody>
                             {ordersLoading ? (
-                                <tr>
-                                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                                        Chargement...
-                                    </td>
-                                </tr>
+                                <TableLoadingRow colSpan={5} label="Chargement des commandes…" />
                             ) : orders.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">

@@ -10,6 +10,7 @@ import {
 import { LocalityService, Locality } from '@/services/locality.service';
 import { useToast } from '@/components/ui/simple-toast';
 import { getErrorMessage } from '@/lib/api-error';
+import { ContentLoader } from '@/components/ui/loading';
 
 export default function DeliveriesPage() {
     const { data: session } = useSession();
@@ -88,7 +89,7 @@ export default function DeliveriesPage() {
             </div>
 
             {loading ? (
-                <div className="text-muted-foreground">Chargement...</div>
+                <ContentLoader label="Chargement des livraisons…" />
             ) : groups.length === 0 ? (
                 <div className="rounded-xl border border-border bg-card p-10 text-center text-muted-foreground">
                     Aucune commande prete a livrer.

@@ -28,7 +28,7 @@ describe('DashboardPage role routing', () => {
     it('shows loading while session is loading', () => {
         mockUseSession.mockReturnValue({ data: null, status: 'loading' });
         render(<DashboardPage />);
-        expect(screen.getByText('Chargement...')).toBeInTheDocument();
+        expect(screen.getByLabelText('Chargement')).toBeInTheDocument();
     });
 
     it('renders TenantNetworkDashboard for Admin_Tenant', async () => {

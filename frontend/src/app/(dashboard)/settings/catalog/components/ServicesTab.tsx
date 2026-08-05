@@ -8,6 +8,7 @@ import { Table } from '@/components/ui/table';
 import { Modal } from '@/components/ui/modal';
 import { ServiceDefinition } from '@/types/service-definition';
 import { serviceDefinitionService } from '@/services/service-definition.service';
+import { ContentLoader } from '@/components/ui/loading';
 
 const serviceSchema = z.object({
     label: z.string().min(1, 'Label is required').max(100, 'Label is too long'),
@@ -133,7 +134,7 @@ export function ServicesTab() {
             </div>
             <div className="mt-8 flow-root">
                 {loading ? (
-                    <div className="text-center py-10">Loading...</div>
+                    <ContentLoader label="Chargement des services…" />
                 ) : (
                     <Table
                         data={services}

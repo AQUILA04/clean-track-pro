@@ -4,6 +4,7 @@ import { Pencil, Trash2, ExternalLink } from 'lucide-react';
 import { Tenant } from '@/services/tenant.service';
 import { Button } from '@/components/ui/Button';
 import { Switch } from '@/components/ui/Switch';
+import { ContentLoader } from '@/components/ui/loading';
 
 interface TenantsTableProps {
     tenants: Tenant[];
@@ -32,8 +33,8 @@ export function TenantsTable({
 }: TenantsTableProps) {
     if (loading) {
         return (
-            <div className="rounded-xl border border-border bg-card p-12 text-center text-muted-foreground">
-                Chargement des tenants...
+            <div className="rounded-xl border border-border bg-card">
+                <ContentLoader label="Chargement des tenants…" />
             </div>
         );
     }

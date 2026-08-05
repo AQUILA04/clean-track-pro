@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/simple-toast';
+import { PageLoader, TableLoadingRow } from '@/components/ui/loading';
 
 export default function ExpenseTypesPage() {
     const { toast } = useToast();
@@ -47,7 +48,7 @@ export default function ExpenseTypesPage() {
     }, [status, canManage, refresh]);
 
     if (status === 'loading') {
-        return <div className="p-8 text-muted-foreground">Chargement...</div>;
+        return <PageLoader />;
     }
 
     if (!canManage) {
@@ -167,11 +168,7 @@ export default function ExpenseTypesPage() {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
-                                        Chargement...
-                                    </td>
-                                </tr>
+                                <TableLoadingRow colSpan={4} label="Chargement des types…" />
                             ) : types.length === 0 ? (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">

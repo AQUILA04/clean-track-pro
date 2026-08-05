@@ -5,6 +5,7 @@ import { MapPin, Plus, Trash2 } from 'lucide-react';
 import { LocalityService, Locality } from '@/services/locality.service';
 import { useToast } from '@/components/ui/simple-toast';
 import { getErrorMessage } from '@/lib/api-error';
+import { ContentLoader } from '@/components/ui/loading';
 
 interface AgencyLocalitiesCardProps {
     siteId: string;
@@ -99,7 +100,7 @@ export function AgencyLocalitiesCard({ siteId }: AgencyLocalitiesCardProps) {
             </form>
 
             {loading ? (
-                <div className="text-sm text-muted-foreground">Chargement...</div>
+                <ContentLoader label="Chargement des localités…" className="py-4" />
             ) : localities.length === 0 ? (
                 <div className="text-sm text-muted-foreground">Aucune localite.</div>
             ) : (

@@ -6,14 +6,13 @@ import { getSessionRoles, hasAnyRole } from '@/lib/roles';
 import { TenantNetworkDashboard } from '@/components/dashboard/TenantNetworkDashboard';
 import { AdminSiteDashboard } from '@/components/dashboard/AdminSiteDashboard';
 import { UserSiteOpsHome } from '@/components/dashboard/UserSiteOpsHome';
+import { PageLoader } from '@/components/ui/loading';
 
 export default function DashboardPage() {
     const { data: session, status } = useSession();
 
     if (status === 'loading') {
-        return (
-            <div className="p-8 text-center text-muted-foreground">Chargement...</div>
-        );
+        return <PageLoader />;
     }
 
     const roles = getSessionRoles(session?.user);

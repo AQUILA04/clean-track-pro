@@ -41,6 +41,7 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { SiteKpiCard } from '@/components/dashboard/SiteKpiCard';
 import { useToast } from '@/components/ui/simple-toast';
 import { useTenantConfig } from '@/context/tenant-config.context';
+import { TableLoadingRow } from '@/components/ui/loading';
 
 type PeriodPreset = 'day' | 'week' | 'month' | 'custom';
 
@@ -672,14 +673,7 @@ export default function ExpensesPage() {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr>
-                                    <td
-                                        colSpan={tableColCount}
-                                        className="px-6 py-8 text-center text-muted-foreground"
-                                    >
-                                        Chargement...
-                                    </td>
-                                </tr>
+                                <TableLoadingRow colSpan={tableColCount} label="Chargement des dépenses…" />
                             ) : expenses.length === 0 ? (
                                 <tr>
                                     <td

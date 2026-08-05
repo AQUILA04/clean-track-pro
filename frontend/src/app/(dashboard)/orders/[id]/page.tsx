@@ -29,6 +29,7 @@ import { OrderTimeline } from '@/components/orders/OrderTimeline';
 import { useToast } from '@/components/ui/simple-toast';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useFormatMoney } from '@/context/tenant-config.context';
+import { PageLoader } from '@/components/ui/loading';
 
 interface OrderItemRow {
     id: string;
@@ -146,7 +147,7 @@ export default function OrderDetailPage() {
     };
 
     if (loading) {
-        return <div className="py-16 text-center text-muted-foreground">Chargement de la commande…</div>;
+        return <PageLoader label="Chargement de la commande…" />;
     }
 
     if (!order) {

@@ -7,6 +7,7 @@ import { ServicePrice } from '@/types/service-price';
 import { articleTypeService } from '@/services/article-type.service';
 import { serviceDefinitionService } from '@/services/service-definition.service';
 import { pricingService } from '@/services/pricing.service';
+import { ContentLoader } from '@/components/ui/loading';
 
 export function PricingTab() {
     const [articleTypes, setArticleTypes] = useState<ArticleType[]>([]);
@@ -86,7 +87,7 @@ export function PricingTab() {
         }
     };
 
-    if (loading) return <div className="text-center py-10">Loading pricing configuration...</div>;
+    if (loading) return <ContentLoader label="Chargement de la grille tarifaire…" />;
 
     if (services.length === 0 || articleTypes.length === 0) {
         return (

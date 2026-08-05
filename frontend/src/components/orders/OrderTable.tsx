@@ -9,6 +9,7 @@ import { formatOrderLabel } from '@/lib/order-display';
 import { StatusLabel } from '@/components/shared/StatusLabel';
 import { resolveDisplayOrderStatus } from '@/lib/status-labels';
 import { useFormatMoney } from '@/context/tenant-config.context';
+import { ContentLoader } from '@/components/ui/loading';
 
 interface OrderSummary {
     id: string;
@@ -41,7 +42,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, loading, paginat
     const formatMoney = useFormatMoney();
 
     if (loading) {
-        return <div className="p-4 text-center text-muted-foreground">Chargement des commandes…</div>;
+        return <ContentLoader label="Chargement des commandes…" />;
     }
 
     if (orders.length === 0) {

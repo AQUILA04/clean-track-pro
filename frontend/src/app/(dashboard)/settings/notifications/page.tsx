@@ -12,6 +12,7 @@ import { getErrorMessage } from '@/lib/api-error';
 import { useTenantConfig } from '@/context/tenant-config.context';
 import { formatCurrency } from '@/lib/format-currency';
 import { convertAmountSync, fetchRatesPerEur } from '@/lib/fx';
+import { PageLoader } from '@/components/ui/loading';
 
 export default function TenantNotificationsSettingsPage() {
     const { toast } = useToast();
@@ -102,7 +103,7 @@ export default function TenantNotificationsSettingsPage() {
     };
 
     if (!config) {
-        return <div className="p-6 text-muted-foreground">Chargement...</div>;
+        return <PageLoader label="Chargement des paramètres…" />;
     }
 
     const smsPriceLabel = smsDisplayPrice;

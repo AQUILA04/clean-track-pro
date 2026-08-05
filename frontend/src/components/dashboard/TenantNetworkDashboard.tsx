@@ -26,6 +26,7 @@ import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { useTenantConfig } from '@/context/tenant-config.context';
 import { DateRange } from 'react-day-picker';
 import { AgencySelector, type AgencyOption } from '@/components/ui/agency-selector';
+import { ContentLoader } from '@/components/ui/loading';
 
 type SiteStatRow = {
     siteId: string;
@@ -246,7 +247,7 @@ export function TenantNetworkDashboard() {
             </div>
 
             {loading ? (
-                <div className="p-8 text-center text-muted-foreground">Chargement du réseau...</div>
+                <ContentLoader label="Chargement du réseau…" className="p-8" />
             ) : (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -12,6 +12,7 @@ import { OrderDeliveryCard } from '@/components/storage/OrderDeliveryCard';
 import { OpsOrderQueue, type QueueOrder } from '@/components/storage/OpsOrderQueue';
 import { OrderMatchModal, OrderMatchCandidate } from '@/components/orders/OrderMatchModal';
 import { PaymentForm } from '@/components/payments/PaymentForm';
+import { ContentLoader } from '@/components/ui/loading';
 import { getErrorMessage } from '@/lib/api-error';
 import { formatOrderLabel } from '@/lib/order-display';
 import { formatStatusLabel } from '@/lib/status-labels';
@@ -384,9 +385,8 @@ function DeliveryPageContent() {
                             />
                         </div>
                     ) : loading ? (
-                        <div className="rounded-xl border border-border bg-card p-12 text-center min-h-[420px] flex flex-col justify-center items-center">
-                            <span className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-                            <p className="text-muted-foreground">Chargement de la commande…</p>
+                        <div className="rounded-xl border border-border bg-card min-h-[420px]">
+                            <ContentLoader label="Chargement de la commande…" />
                         </div>
                     ) : (
                         <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center min-h-[420px] flex flex-col justify-center items-center">
@@ -421,7 +421,7 @@ export default function DeliveryPage() {
             fallback={
                 <div className="space-y-6">
                     <h1 className="text-2xl font-bold text-foreground">Livraison client</h1>
-                    <p className="text-muted-foreground">Chargement…</p>
+                    <ContentLoader label="Chargement…" />
                 </div>
             }
         >

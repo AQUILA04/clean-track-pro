@@ -11,6 +11,7 @@ import { StatusLabel } from '@/components/shared/StatusLabel';
 import { resolveDisplayOrderStatus } from '@/lib/status-labels';
 import { Button } from '@/components/ui/Button';
 import { useFormatMoney } from '@/context/tenant-config.context';
+import { ContentLoader } from '@/components/ui/loading';
 
 type StatusFilter = 'all' | 'ready' | 'processing' | 'late';
 
@@ -222,7 +223,7 @@ export default function OrdersHistoryPage() {
 
             <div className="rounded-xl border border-border bg-card overflow-hidden">
                 {loading ? (
-                    <div className="p-10 text-center text-muted-foreground">Chargement des commandes…</div>
+                    <ContentLoader label="Chargement des commandes…" />
                 ) : orders.length === 0 ? (
                     <div className="p-10 text-center text-muted-foreground">Aucune commande trouvée.</div>
                 ) : (

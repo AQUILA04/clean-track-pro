@@ -8,6 +8,7 @@ import { Table } from '@/components/ui/table';
 import { Modal } from '@/components/ui/modal';
 import { ArticleType } from '@/types/article-type';
 import { articleTypeService } from '@/services/article-type.service';
+import { ContentLoader } from '@/components/ui/loading';
 
 const articleTypeSchema = z.object({
     label: z.string().min(1, 'Label is required').max(100, 'Label is too long'),
@@ -133,7 +134,7 @@ export function ArticleTypesTab() {
             </div>
             <div className="mt-8 flow-root">
                 {loading ? (
-                    <div className="text-center py-10">Loading...</div>
+                    <ContentLoader label="Chargement des types d'articles…" />
                 ) : (
                     <Table
                         data={articleTypes}

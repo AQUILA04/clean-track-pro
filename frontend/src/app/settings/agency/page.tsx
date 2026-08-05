@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { TenantService, UpdateTenantBrandingDto } from '@/services/tenant.service';
 import { UserService } from '@/services/user.service';
 import InviteUserModal from '@/components/admin/InviteUserModal';
+import { PageLoader } from '@/components/ui/loading';
 
 export default function AgencySettingsPage() {
     const [loading, setLoading] = useState(true);
@@ -66,7 +67,7 @@ export default function AgencySettingsPage() {
         fetchUsers();
     };
 
-    if (loading) return <div className="p-8">Loading settings...</div>;
+    if (loading) return <PageLoader label="Chargement des paramètres…" />;
 
     return (
         <div className="container mx-auto p-6 max-w-4xl">

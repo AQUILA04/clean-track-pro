@@ -6,6 +6,7 @@ import { ChevronDown } from 'lucide-react';
 import { OrdersService } from '@/services/orders.service';
 import { useParams } from 'next/navigation';
 import { useFormatMoney } from '@/context/tenant-config.context';
+import { ContentLoader } from '@/components/ui/loading';
 
 interface WeeklyStat {
     name: string;
@@ -48,8 +49,8 @@ export const PerformanceChartCard: React.FC<PerformanceChartCardProps> = ({ site
 
     if (loading) {
         return (
-            <div className="bg-card p-6 rounded-xl border border-border flex items-center justify-center h-[350px] text-muted-foreground">
-                Chargement...
+            <div className="bg-card rounded-xl border border-border h-[350px]">
+                <ContentLoader label="Chargement du graphique…" />
             </div>
         );
     }

@@ -29,6 +29,7 @@ import { useSession } from 'next-auth/react';
 import { hasAnyRole, getRoleDisplayLabel, getSessionRoles } from '@/lib/roles';
 
 import { useToast } from '@/components/ui/simple-toast';
+import { ContentLoader } from '@/components/ui/loading';
 
 
 
@@ -493,13 +494,7 @@ export default function UsersPage() {
 
 
                 {isLoading ? (
-
-                    <div className="flex justify-center py-12">
-
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-
-                    </div>
-
+                    <ContentLoader label="Chargement des utilisateurs…" />
                 ) : (
 
                     <UsersTable

@@ -13,6 +13,7 @@ import { OrderStorageLocation } from '@/components/storage/OrderStorageLocation'
 import { formatOrderLabel } from '@/lib/order-display';
 import { formatStatusLabel } from '@/lib/status-labels';
 import { StatusLabel } from '@/components/shared/StatusLabel';
+import { ContentLoader } from '@/components/ui/loading';
 import { useFormatMoney } from '@/context/tenant-config.context';
 
 export default function StorageScannerPage() {
@@ -189,10 +190,7 @@ export default function StorageScannerPage() {
 
                 <div className="rounded-xl border border-border bg-card min-h-[420px] p-4">
                     {detailLoading ? (
-                        <div className="flex flex-col items-center justify-center h-full min-h-[380px] text-muted-foreground">
-                            <span className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-                            Chargement…
-                        </div>
+                        <ContentLoader label="Chargement…" className="min-h-[380px]" />
                     ) : selected ? (
                         <div className="space-y-4">
                             <div className="flex items-start justify-between gap-3">

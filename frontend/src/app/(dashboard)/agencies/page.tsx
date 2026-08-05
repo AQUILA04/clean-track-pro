@@ -10,6 +10,7 @@ import { AgencyFilters } from '@/components/agencies/AgencyFilters';
 import { AgencyFormModal } from '@/components/agencies/AddAgencyModal'; // Updated export name
 import { SuccessModal } from '@/components/ui/SuccessModal';
 import { SiteService, Site } from '@/services/site.service';
+import { ContentLoader } from '@/components/ui/loading';
 
 export default function AgenciesPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -126,7 +127,7 @@ export default function AgenciesPage() {
 
                 {/* Grid */}
                 {loading ? (
-                    <div className="p-8 text-center text-muted-foreground">Chargement des agences...</div>
+                    <ContentLoader label="Chargement des agences…" />
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {filteredAgencies.map((agency) => (

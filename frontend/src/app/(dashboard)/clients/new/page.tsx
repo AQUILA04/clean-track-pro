@@ -4,6 +4,7 @@ import { Suspense, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ClientRegistrationForm } from '@/components/clients/ClientRegistrationForm';
+import { PageLoader } from '@/components/ui/loading';
 
 function NewClientContent() {
     const searchParams = useSearchParams();
@@ -40,7 +41,7 @@ function NewClientContent() {
 
 export default function NewClientPage() {
     return (
-        <Suspense fallback={<div className="p-8 text-muted-foreground">Chargement...</div>}>
+        <Suspense fallback={<PageLoader label="Chargement…" />}>
             <NewClientContent />
         </Suspense>
     );

@@ -13,6 +13,7 @@ import {
     type UpdateSubscriptionPlanDto,
 } from '@/services/subscription.service';
 import { useToast } from '@/components/ui/simple-toast';
+import { ContentLoader } from '@/components/ui/loading';
 import { PlanLimitsEditor } from '@/components/subscription/PlanLimitsEditor';
 import { parsePlanLimits, serializePlanLimits } from '@/lib/plan-limits';
 
@@ -289,7 +290,7 @@ export default function AdminPlansPage() {
             </Card>
 
             {loading ? (
-                <p className="text-muted-foreground">Chargement...</p>
+                <ContentLoader label="Chargement des plans…" />
             ) : (
                 <div className="grid gap-4">
                     {plans.map((plan) => (
