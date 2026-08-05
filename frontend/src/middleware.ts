@@ -75,14 +75,14 @@ const authMiddleware = withAuth(
     },
 );
 
-export default function middleware(req: NextRequest) {
+export default function middleware(req: NextRequest, event: import('next/server').NextFetchEvent) {
     const oauthRedirect = redirectOAuthCallbackError(req);
     if (oauthRedirect) {
         return oauthRedirect;
     }
 
     if (isProtectedPath(req.nextUrl.pathname)) {
-        return authMiddleware(req);
+        return authMiddleware(req, event);
     }
 
     return NextResponse.next();
