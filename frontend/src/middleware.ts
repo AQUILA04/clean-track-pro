@@ -52,14 +52,19 @@ function redirectOAuthCallbackError(req: NextRequest): NextResponse | null {
     return NextResponse.redirect(url);
 }
 
-const authMiddleware = withAuth(
+export default withAuth(
     function middleware(req) {
+        const oauthRedirect = redirectOAuthCallbackError(req);
+        if (oauthRedirect) {
+            return oauthRedirect;
+        }
+
         const roles = (req.nextauth.token?.roles as string[] | undefined) ?? [];
         const role = req.nextauth.token?.role as string | undefined;
         const effectiveRoles = role && !roles.includes(role) ? [...roles, role] : roles;
         const pathname = req.nextUrl.pathname;
 
-        if (!canAccessPath(effectiveRoles, pathname)) {
+        if (isProtectedPath(pathname) && !canAccessPath(effectiveRoles, pathname)) {
             const url = req.nextUrl.clone();
             url.pathname = '/dashboard';
             url.search = '';
@@ -70,23 +75,19 @@ const authMiddleware = withAuth(
     },
     {
         callbacks: {
-            authorized: ({ token }) => !!token,
+            authorized: ({ token, req }) => {
+                const pathname = req.nextUrl.pathname;
+                if (pathname.startsWith('/api/auth/callback/')) {
+                    return true;
+                }
+                if (!isProtectedPath(pathname)) {
+                    return true;
+                }
+                return !!token;
+            },
         },
     },
 );
-
-export default function middleware(req: NextRequest, event: import('next/server').NextFetchEvent) {
-    const oauthRedirect = redirectOAuthCallbackError(req);
-    if (oauthRedirect) {
-        return oauthRedirect;
-    }
-
-    if (isProtectedPath(req.nextUrl.pathname)) {
-        return authMiddleware(req, event);
-    }
-
-    return NextResponse.next();
-}
 
 export const config = {
     matcher: [
