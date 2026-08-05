@@ -115,13 +115,30 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Bootstrap & Deploy to PROD server
+        env:
+          FRONTEND_IMAGE: ${{ needs.resolve-images.outputs.frontend_image }}
+          BACKEND_IMAGE: ${{ needs.resolve-images.outputs.backend_image }}
+          KEYCLOAK_IMAGE: ${{ needs.resolve-images.outputs.keycloak_image }}
+          SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+          SERVER_HOST: ${{ secrets.PROD_SERVER_HOST }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          DB_USER: ${{ secrets.DB_USER }}
+          PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+          PROD_DB_NAME: ${{ secrets.PROD_DB_NAME }}
+          PROD_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.PROD_KEYCLOAK_ADMIN_PASSWORD }}
+          PROD_KEYCLOAK_CLIENT_SECRET: ${{ secrets.PROD_KEYCLOAK_CLIENT_SECRET }}
+          PROD_NEXTAUTH_SECRET: ${{ secrets.PROD_NEXTAUTH_SECRET }}
+          PROD_APP_HOSTNAME: ${{ secrets.PROD_APP_HOSTNAME }}
+          PROD_API_HOSTNAME: ${{ secrets.PROD_API_HOSTNAME }}
+          PROD_KEYCLOAK_HOSTNAME: ${{ secrets.PROD_KEYCLOAK_HOSTNAME }}
+          PROD_MAIL_HOST: ${{ secrets.PROD_MAIL_HOST }}
+          PROD_MAIL_PORT: ${{ secrets.PROD_MAIL_PORT }}
+          PROD_MAIL_USER: ${{ secrets.PROD_MAIL_USER }}
+          PROD_MAIL_PASS: ${{ secrets.PROD_MAIL_PASS }}
+          PROD_MAIL_FROM: ${{ secrets.PROD_MAIL_FROM }}
         run: |
           set -euo pipefail
-          FRONTEND_IMAGE='${{ needs.resolve-images.outputs.frontend_image }}'
-          BACKEND_IMAGE='${{ needs.resolve-images.outputs.backend_image }}'
-          KEYCLOAK_IMAGE='${{ needs.resolve-images.outputs.keycloak_image }}'
-          SERVER_USER='${{ secrets.PROD_SERVER_USER }}'
-          SERVER_HOST='${{ secrets.PROD_SERVER_HOST }}'
 
           echo "Deploying $FRONTEND_IMAGE, $BACKEND_IMAGE and $KEYCLOAK_IMAGE to PROD ($SERVER_HOST)"
 
@@ -134,25 +151,31 @@ jobs:
           chmod +x /opt/cleantrack/init.sh
           ENDSSH
 
-          # Exécuter init.sh avec tous les secrets injectés via SSH
-          ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" \
-            "sudo /opt/cleantrack/init.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE' '$KEYCLOAK_IMAGE' \
-              --ghcr-username '${{ secrets.GHCR_USERNAME }}' \
-              --ghcr-token '${{ secrets.GHCR_TOKEN }}' \
-              --db-user '${{ secrets.DB_USER }}' \
-              --db-password '${{ secrets.PROD_DB_PASSWORD }}' \
-              --db-name '${{ secrets.PROD_DB_NAME }}' \
-              --keycloak-admin-password '${{ secrets.PROD_KEYCLOAK_ADMIN_PASSWORD }}' \
-              --keycloak-client-secret '${{ secrets.PROD_KEYCLOAK_CLIENT_SECRET }}' \
-              --nextauth-secret '${{ secrets.PROD_NEXTAUTH_SECRET }}' \
-              --app-hostname-prod '${{ secrets.PROD_APP_HOSTNAME }}' \
-              --api-hostname-prod '${{ secrets.PROD_API_HOSTNAME }}' \
-              --keycloak-hostname-prod '${{ secrets.PROD_KEYCLOAK_HOSTNAME }}' \
-              --mail-host '${{ secrets.PROD_MAIL_HOST }}' \
-              --mail-port '${{ secrets.PROD_MAIL_PORT }}' \
-              --mail-user '${{ secrets.PROD_MAIL_USER }}' \
-              --mail-pass '${{ secrets.PROD_MAIL_PASS }}' \
-              --mail-from '${{ secrets.PROD_MAIL_FROM }}'"
+          INIT_ARGS=(
+            prod
+            "$FRONTEND_IMAGE"
+            "$BACKEND_IMAGE"
+            "$KEYCLOAK_IMAGE"
+            --ghcr-username "$GHCR_USERNAME"
+            --ghcr-token "$GHCR_TOKEN"
+            --db-user "$DB_USER"
+            --db-password "$PROD_DB_PASSWORD"
+            --db-name "$PROD_DB_NAME"
+            --keycloak-admin-password "$PROD_KEYCLOAK_ADMIN_PASSWORD"
+            --keycloak-client-secret "$PROD_KEYCLOAK_CLIENT_SECRET"
+            --nextauth-secret "$PROD_NEXTAUTH_SECRET"
+            --app-hostname-prod "$PROD_APP_HOSTNAME"
+            --api-hostname-prod "$PROD_API_HOSTNAME"
+            --keycloak-hostname-prod "$PROD_KEYCLOAK_HOSTNAME"
+            --mail-host "$PROD_MAIL_HOST"
+            --mail-port "$PROD_MAIL_PORT"
+            --mail-user "$PROD_MAIL_USER"
+            --mail-pass "$PROD_MAIL_PASS"
+            --mail-from "$PROD_MAIL_FROM"
+          )
+
+          REMOTE_CMD="sudo /opt/cleantrack/init.sh $(printf '%q ' "${INIT_ARGS[@]}")"
+          ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" "$REMOTE_CMD"
 
       - name: Cleanup SSH key
         if: always()
@@ -177,13 +200,30 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Bootstrap & Deploy to PROD server
+        env:
+          FRONTEND_IMAGE: ${{ needs.resolve-images.outputs.frontend_image }}
+          BACKEND_IMAGE: ${{ needs.resolve-images.outputs.backend_image }}
+          KEYCLOAK_IMAGE: ${{ needs.resolve-images.outputs.keycloak_image }}
+          SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+          SERVER_HOST: ${{ secrets.PROD_SERVER_HOST }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          DB_USER: ${{ secrets.DB_USER }}
+          PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+          PROD_DB_NAME: ${{ secrets.PROD_DB_NAME }}
+          PROD_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.PROD_KEYCLOAK_ADMIN_PASSWORD }}
+          PROD_KEYCLOAK_CLIENT_SECRET: ${{ secrets.PROD_KEYCLOAK_CLIENT_SECRET }}
+          PROD_NEXTAUTH_SECRET: ${{ secrets.PROD_NEXTAUTH_SECRET }}
+          PROD_APP_HOSTNAME: ${{ secrets.PROD_APP_HOSTNAME }}
+          PROD_API_HOSTNAME: ${{ secrets.PROD_API_HOSTNAME }}
+          PROD_KEYCLOAK_HOSTNAME: ${{ secrets.PROD_KEYCLOAK_HOSTNAME }}
+          PROD_MAIL_HOST: ${{ secrets.PROD_MAIL_HOST }}
+          PROD_MAIL_PORT: ${{ secrets.PROD_MAIL_PORT }}
+          PROD_MAIL_USER: ${{ secrets.PROD_MAIL_USER }}
+          PROD_MAIL_PASS: ${{ secrets.PROD_MAIL_PASS }}
+          PROD_MAIL_FROM: ${{ secrets.PROD_MAIL_FROM }}
         run: |
           set -euo pipefail
-          FRONTEND_IMAGE='${{ needs.resolve-images.outputs.frontend_image }}'
-          BACKEND_IMAGE='${{ needs.resolve-images.outputs.backend_image }}'
-          KEYCLOAK_IMAGE='${{ needs.resolve-images.outputs.keycloak_image }}'
-          SERVER_USER='${{ secrets.PROD_SERVER_USER }}'
-          SERVER_HOST='${{ secrets.PROD_SERVER_HOST }}'
 
           echo "Promoting to PROD: frontend=$FRONTEND_IMAGE backend=$BACKEND_IMAGE keycloak=$KEYCLOAK_IMAGE"
 
@@ -196,24 +236,31 @@ jobs:
           chmod +x /opt/cleantrack/init.sh
           ENDSSH
 
-          ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" \
-            "sudo /opt/cleantrack/init.sh prod '$FRONTEND_IMAGE' '$BACKEND_IMAGE' '$KEYCLOAK_IMAGE' \
-              --ghcr-username '${{ secrets.GHCR_USERNAME }}' \
-              --ghcr-token '${{ secrets.GHCR_TOKEN }}' \
-              --db-user '${{ secrets.DB_USER }}' \
-              --db-password '${{ secrets.PROD_DB_PASSWORD }}' \
-              --db-name '${{ secrets.PROD_DB_NAME }}' \
-              --keycloak-admin-password '${{ secrets.PROD_KEYCLOAK_ADMIN_PASSWORD }}' \
-              --keycloak-client-secret '${{ secrets.PROD_KEYCLOAK_CLIENT_SECRET }}' \
-              --nextauth-secret '${{ secrets.PROD_NEXTAUTH_SECRET }}' \
-              --app-hostname-prod '${{ secrets.PROD_APP_HOSTNAME }}' \
-              --api-hostname-prod '${{ secrets.PROD_API_HOSTNAME }}' \
-              --keycloak-hostname-prod '${{ secrets.PROD_KEYCLOAK_HOSTNAME }}' \
-              --mail-host '${{ secrets.PROD_MAIL_HOST }}' \
-              --mail-port '${{ secrets.PROD_MAIL_PORT }}' \
-              --mail-user '${{ secrets.PROD_MAIL_USER }}' \
-              --mail-pass '${{ secrets.PROD_MAIL_PASS }}' \
-              --mail-from '${{ secrets.PROD_MAIL_FROM }}'"
+          INIT_ARGS=(
+            prod
+            "$FRONTEND_IMAGE"
+            "$BACKEND_IMAGE"
+            "$KEYCLOAK_IMAGE"
+            --ghcr-username "$GHCR_USERNAME"
+            --ghcr-token "$GHCR_TOKEN"
+            --db-user "$DB_USER"
+            --db-password "$PROD_DB_PASSWORD"
+            --db-name "$PROD_DB_NAME"
+            --keycloak-admin-password "$PROD_KEYCLOAK_ADMIN_PASSWORD"
+            --keycloak-client-secret "$PROD_KEYCLOAK_CLIENT_SECRET"
+            --nextauth-secret "$PROD_NEXTAUTH_SECRET"
+            --app-hostname-prod "$PROD_APP_HOSTNAME"
+            --api-hostname-prod "$PROD_API_HOSTNAME"
+            --keycloak-hostname-prod "$PROD_KEYCLOAK_HOSTNAME"
+            --mail-host "$PROD_MAIL_HOST"
+            --mail-port "$PROD_MAIL_PORT"
+            --mail-user "$PROD_MAIL_USER"
+            --mail-pass "$PROD_MAIL_PASS"
+            --mail-from "$PROD_MAIL_FROM"
+          )
+
+          REMOTE_CMD="sudo /opt/cleantrack/init.sh $(printf '%q ' "${INIT_ARGS[@]}")"
+          ssh -o StrictHostKeyChecking=no -i private_key "$SERVER_USER@$SERVER_HOST" "$REMOTE_CMD"
 
       - name: Cleanup SSH key
         if: always()
