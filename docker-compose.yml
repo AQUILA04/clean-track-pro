@@ -30,6 +30,9 @@ services:
       KC_DB_USERNAME: ${DB_USER:-postgres}
       KC_DB_PASSWORD: ${DB_PASSWORD:-postgres}
       KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HTTP_ENABLED: "true"
     command: start-dev
     depends_on:
       postgres:

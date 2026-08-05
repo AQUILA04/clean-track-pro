@@ -15,3 +15,6 @@ services:
     environment:
       KC_HOSTNAME: localhost
       KC_HOSTNAME_PORT: 9081
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HTTP_ENABLED: "true"

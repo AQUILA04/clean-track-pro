@@ -62,6 +62,7 @@ async function assertTenantActive(accessToken: string, roles: string[] | undefin
         const response = await fetch(`${getApiUrl()}/tenants/me`, {
             headers: { Authorization: `Bearer ${accessToken}` },
             cache: 'no-store',
+            signal: AbortSignal.timeout(5_000),
         });
 
         if (response.status === 403) {

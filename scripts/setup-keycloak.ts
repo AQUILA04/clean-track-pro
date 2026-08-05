@@ -448,6 +448,7 @@ async function setupKeycloak() {
                         lastName: userData.lastName,
                         enabled: true,
                         emailVerified: true,
+                        requiredActions: [],
                         attributes: userData.attributes,
                     },
                 );
@@ -460,6 +461,7 @@ async function setupKeycloak() {
                     lastName: userData.lastName,
                     enabled: true,
                     emailVerified: true,
+                    requiredActions: [],
                     attributes: userData.attributes,
                     realm: REALM_NAME,
                 });
