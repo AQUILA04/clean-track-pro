@@ -110,6 +110,25 @@ async function setupKeycloak() {
         );
         console.log(`✅ Theme '${CLEANTRACK_THEME}' applied to realm '${REALM_NAME}'`);
 
+        // Keycloak 24+ enables VERIFY_PROFILE by default; it blocks E2E password login.
+        try {
+            const verifyProfile = await kcAdminClient.authenticationManagement.getRequiredAction({
+                alias: 'VERIFY_PROFILE',
+            });
+            await kcAdminClient.authenticationManagement.updateRequiredAction(
+                { alias: 'VERIFY_PROFILE' },
+                {
+                    ...verifyProfile,
+                    alias: 'VERIFY_PROFILE',
+                    enabled: false,
+                    defaultAction: false,
+                },
+            );
+            console.log('✅ Disabled required action VERIFY_PROFILE');
+        } catch (error) {
+            console.warn('⚠️  Could not disable VERIFY_PROFILE:', error);
+        }
+
         if (KEYCLOAK_SMTP_HOST && KEYCLOAK_SMTP_FROM) {
             await kcAdminClient.realms.update(
                 { realm: REALM_NAME },
