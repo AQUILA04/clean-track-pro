@@ -67,8 +67,8 @@ async function seed() {
         const siteExists = await qr.query(`SELECT id FROM sites WHERE id = $1`, [SITE_ID]);
         if (!siteExists.length) {
             await qr.query(
-                `INSERT INTO sites (id, tenant_id, name, city, postal_code, location, status)
-                 VALUES ($1, $2, 'Agence Paris Centre', 'Paris', '75001', '1 rue de Rivoli', 'ACTIVE')`,
+                `INSERT INTO sites (id, tenant_id, code, name, city, postal_code, location, status)
+                 VALUES ($1, $2, 1, 'Agence Paris Centre', 'Paris', '75001', '1 rue de Rivoli', 'ACTIVE')`,
                 [SITE_ID, TENANT_ID],
             );
             console.log('✅ Site seeded: Agence Paris Centre');
