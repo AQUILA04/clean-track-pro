@@ -11,7 +11,11 @@ import { getVisibleNavItems } from '@/lib/navigation';
 import { getSessionRoles, getRoleDisplayLabel } from '@/lib/roles';
 import { BrandMark } from '@/components/layout/BrandMark';
 
-export const Sidebar: React.FC = () => {
+type SidebarContentProps = {
+    onNavigate?: () => void;
+};
+
+export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate }) => {
     const pathname = usePathname();
     const { data: session } = useSession();
     const roles = getSessionRoles(session?.user);
@@ -31,11 +35,7 @@ export const Sidebar: React.FC = () => {
     };
 
     return (
-        <aside className="hidden md:flex flex-col w-64 bg-background border-r border-border h-screen fixed left-0 top-0 z-50 transition-colors duration-300">
-            <div className="flex items-center h-16 px-6 border-b border-border">
-                <BrandMark />
-            </div>
-
+        <>
             <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
                 {menuItems.map((item) => {
                     const active = isActive(item.href);
@@ -44,14 +44,15 @@ export const Sidebar: React.FC = () => {
                         <Link
                             key={item.name}
                             href={item.href}
-                            className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${
+                            onClick={onNavigate}
+                            className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group min-h-11 ${
                                 active
                                     ? 'bg-primary text-primary-foreground'
                                     : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                             }`}
                         >
                             <Icon
-                                className={`mr-3 h-5 w-5 transition-colors ${
+                                className={`mr-3 h-5 w-5 shrink-0 transition-colors ${
                                     active ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground'
                                 }`}
                             />
@@ -86,13 +87,25 @@ export const Sidebar: React.FC = () => {
                 </div>
 
                 <button
+                    type="button"
                     onClick={handleLogout}
-                    className="flex items-center w-full px-2 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors duration-150"
+                    className="flex items-center w-full px-2 py-2 min-h-11 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors duration-150"
                 >
                     <LogOut className="mr-2 h-4 w-4" />
                     Déconnexion
                 </button>
             </div>
+        </>
+    );
+};
+
+export const Sidebar: React.FC = () => {
+    return (
+        <aside className="hidden md:flex flex-col w-64 bg-background border-r border-border h-screen fixed left-0 top-0 z-50 transition-colors duration-300">
+            <div className="flex items-center h-16 px-6 border-b border-border">
+                <BrandMark />
+            </div>
+            <SidebarContent />
         </aside>
     );
 };
